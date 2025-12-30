@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model accounts {
+  id            Int           @id @default(autoincrement()) @db.UnsignedInt
+  username      String        @unique(map: "username") @db.VarChar(50)
+  password_hash String        @db.VarChar(255)
+  email         String        @unique(map: "email") @db.VarChar(50)
+  phone         String?       @db.VarChar(15)
+  full_name     String        @db.VarChar(50)
+  role          accounts_role @default(user)
+  create_at     DateTime?     @db.DateTime(0)
+  is_deleted    Boolean?      @default(false)
+  tickets       tickets[]
+}
+
+model bookingseats {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  tickets_id Int      @db.UnsignedInt
+  seat_id    Int      @db.UnsignedInt
+  seat_price Decimal  @db.Decimal(10, 2)
+  is_deleted Boolean? @default(false)
+  tickets    tickets  @relation(fields: [tickets_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "bookingseats_ibfk_1")
+  seats      seats    @relation(fields: [seat_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "bookingseats_ibfk_2")
+
+  @@unique([tickets_id, seat_id], map: "tickets_id")
+  @@index([seat_id], map: "seat_id")
+}
+
+model cinemas {
+  id           Int             @id @default(autoincrement()) @db.UnsignedInt
+  province_id  Int             @db.UnsignedInt
+  cinema_name  String          @db.VarChar(100)
+  address      String          @db.VarChar(255)
+  latitude     Decimal?        @db.Decimal(10, 8)
+  longitude    Decimal?        @db.Decimal(11, 8)
+  status       cinemas_status? @default(active)
+  phone        String?         @db.VarChar(10)
+  email        String?         @db.VarChar(50)
+  create_at    DateTime?       @db.DateTime(0)
+  is_deleted   Boolean?        @default(false)
+  provinces    provinces       @relation(fields: [province_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cinemas_ibfk_1")
+  moviecinemas moviecinemas[]
+  rooms        rooms[]
+
+  @@index([province_id], map: "province_id")
+}
+
+model moviecinemas {
+  movie_id   Int      @db.UnsignedInt
+  cinema_id  Int      @db.UnsignedInt
+  is_deleted Boolean? @default(false)
+  movies     movies   @relation(fields: [movie_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "moviecinemas_ibfk_1")
+  cinemas    cinemas  @relation(fields: [cinema_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "moviecinemas_ibfk_2")
+
+  @@id([movie_id, cinema_id])
+  @@index([cinema_id], map: "cinema_id")
+}
+
+model movies {
+  id           Int            @id @default(autoincrement()) @db.UnsignedInt
+  title        String         @db.VarChar(255)
+  description  String?        @db.Text
+  duration     Int
+  release_date DateTime?      @db.Date
+  director     String?        @db.VarChar(100)
+  cast         String?        @db.Text
+  genre        String?        @db.VarChar(100)
+  language     String?        @db.VarChar(50)
+  poster_url   String?        @db.VarChar(255)
+  trailer_url  String?        @db.VarChar(255)
+  status       movies_status? @default(coming_soon)
+  create_at    DateTime?      @db.DateTime(0)
+  update_at    DateTime?      @db.DateTime(0)
+  is_deleted   Boolean?       @default(false)
+  moviecinemas moviecinemas[]
+  slots        slots[]
+}
+
+model news {
+  id         Int       @id @default(autoincrement()) @db.UnsignedInt
+  title      String    @db.VarChar(200)
+  content    String    @db.Text
+  image_url  String?   @db.VarChar(255)
+  create_at  DateTime? @db.DateTime(0)
+  update_at  DateTime? @db.DateTime(0)
+  is_deleted Boolean?  @default(false)
+}
+
+model products {
+  id             Int               @id @default(autoincrement()) @db.UnsignedInt
+  product_name   String            @db.VarChar(100)
+  category       products_category
+  description    String?           @db.Text
+  price          Decimal           @db.Decimal(10, 2)
+  image_url      String?           @db.VarChar(255)
+  create_at      DateTime?         @db.DateTime(0)
+  is_deleted     Boolean?          @default(false)
+  ticketsdetails ticketsdetails[]
+}
+
+model provinces {
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  province_name String    @db.VarChar(100)
+  is_deleted    Boolean?  @default(false)
+  cinemas       cinemas[]
+}
+
+model rooms {
+  id          Int           @id @default(autoincrement()) @db.UnsignedInt
+  cinema_id   Int           @db.UnsignedInt
+  room_name   String        @db.VarChar(50)
+  room_type   String?       @db.VarChar(50)
+  total_seats Int
+  status      rooms_status? @default(active)
+  is_deleted  Boolean?      @default(false)
+  cinemas     cinemas       @relation(fields: [cinema_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "rooms_ibfk_1")
+  seats       seats[]
+  slots       slots[]
+
+  @@index([cinema_id], map: "cinema_id")
+}
+
+model seats {
+  id           Int            @id @default(autoincrement()) @db.UnsignedInt
+  room_id      Int            @db.UnsignedInt
+  seat_row     String         @db.VarChar(5)
+  seat_number  Int
+  seat_type_id Int            @db.UnsignedInt
+  status       seats_status?  @default(active)
+  bookingseats bookingseats[]
+  rooms        rooms          @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "seats_ibfk_1")
+  seattypes    seattypes      @relation(fields: [seat_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "seats_ibfk_2")
+
+  @@unique([room_id, seat_row, seat_number], map: "room_id")
+  @@index([seat_type_id], map: "seat_type_id")
+}
+
+model seattypes {
+  id               Int      @id @default(autoincrement()) @db.UnsignedInt
+  type_name        String   @db.VarChar(50)
+  price_multiplier Decimal? @default(1.00) @db.Decimal(3, 2)
+  description      String?  @db.VarChar(255)
+  is_deleted       Boolean? @default(false)
+  seats            seats[]
+}
+
+model setting_system {
+  id          Int       @id @default(autoincrement())
+  create_at   DateTime? @db.DateTime(0)
+  config_data Json
+  type        String    @unique(map: "type") @db.VarChar(100)
+}
+
+model slots {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  movie_id    Int       @db.UnsignedInt
+  room_id     Int?      @db.UnsignedInt
+  show_time   DateTime  @db.DateTime(0)
+  end_time    DateTime  @db.DateTime(0)
+  price       Decimal   @db.Decimal(10, 2)
+  empty_seats Int
+  create_at   DateTime? @db.DateTime(0)
+  is_deleted  Boolean?  @default(false)
+  movies      movies    @relation(fields: [movie_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "slots_ibfk_1")
+  rooms       rooms?    @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "slots_ibfk_2")
+  tickets     tickets[]
+
+  @@index([movie_id], map: "movie_id")
+  @@index([room_id], map: "room_id")
+}
+
+model tickets {
+  id              Int                     @id @default(autoincrement()) @db.UnsignedInt
+  account_id      Int                     @db.UnsignedInt
+  slot_id         Int                     @db.UnsignedInt
+  tickets_code    String                  @unique(map: "tickets_code") @db.VarChar(20)
+  qr_code_url     String?                 @db.VarChar(255)
+  qr_code_data    String?                 @db.Text
+  tickets_date    DateTime?               @db.DateTime(0)
+  total_amount    Decimal                 @default(0.00) @db.Decimal(10, 2)
+  discount_amount Decimal?                @default(0.00) @db.Decimal(10, 2)
+  final_amount    Decimal                 @default(0.00) @db.Decimal(10, 2)
+  payment_status  tickets_payment_status? @default(unpaid)
+  status          tickets_status?         @default(pending)
+  note            String?                 @db.Text
+  is_deleted      Boolean?                @default(false)
+  bookingseats    bookingseats[]
+  accounts        accounts                @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tickets_ibfk_1")
+  slots           slots                   @relation(fields: [slot_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tickets_ibfk_2")
+  ticketsdetails  ticketsdetails[]
+
+  @@index([account_id], map: "account_id")
+  @@index([slot_id], map: "slot_id")
+}
+
+model ticketsdetails {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  tickets_id  Int      @db.UnsignedInt
+  product_id  Int      @db.UnsignedInt
+  quantity    Int      @db.UnsignedInt
+  unit_price  Decimal  @db.Decimal(10, 2)
+  total_price Decimal  @db.Decimal(10, 2)
+  is_deleted  Boolean? @default(false)
+  tickets     tickets  @relation(fields: [tickets_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticketsdetails_ibfk_1")
+  products    products @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticketsdetails_ibfk_2")
+
+  @@index([product_id], map: "product_id")
+  @@index([tickets_id], map: "tickets_id")
+}
+
+enum products_category {
+  food
+  drink
+  combo
+  voucher
+}
+
+enum rooms_status {
+  active
+  inactive
+}
+
+enum seats_status {
+  active
+  broken
+}
+
+enum accounts_role {
+  admin
+  user
+}
+
+enum cinemas_status {
+  active
+  inactive
+}
+
+enum tickets_payment_status {
+  unpaid
+  paid
+  refunded
+}
+
+enum movies_status {
+  coming_soon
+  now_showing
+  ended
+}
+
+enum tickets_status {
+  pending
+  confirmed
+  cancelled
+}

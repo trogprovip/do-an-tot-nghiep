@@ -1,0 +1,106 @@
+/* eslint-disable @next/next/no-img-element */
+'use client';
+import { useEffect, useState } from 'react';
+import { getPublicMovies } from '@/lib/services/movieService';
+
+// Interface cho Movie từ API
+interface Movie {
+  id: number;
+  title: string;
+  posterUrl: string;
+  rating?: string;
+  status: string;
+}
+
+export default function CGVPage() {
+  // State cho movies từ API
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('all');
+
+  // Fetch movies khi component mount hoặc activeTab thay đổi
+  useEffect(() => {
+    const fetchMovies = async () => {
+      try {
+        setLoading(true);
+        const statusFilter = activeTab === 'all' ? undefined : activeTab;
+        const data = await getPublicMovies(statusFilter);
+        setMovies(data);
+      } catch (error) {
+        console.error('Error loading movies:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMovies();
+  }, [activeTab]); // Thêm activeTab vào dependency
+
+  // Xử lý click vào phim
+  const handleMovieClick = (movieId: number) => {
+    // Chuyển đến trang chi tiết phim
+    window.location.href = `/movies/${movieId}`;
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <h1 className="text-center text-3xl font-bold mt-8">CGV Page</h1>
+      
+      {/* Tab Filter */}
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="flex space-x-4 mb-4">
+          <button
+            className={`px-4 py-2 rounded ${activeTab === 'all' ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
+            onClick={() => setActiveTab('all')}
+          >
+            Tất cả
+          </button>
+          <button
+            className={`px-4 py-2 rounded ${activeTab === 'now-showing' ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
+            onClick={() => setActiveTab('now-showing')}
+          >
+            Đang chiếu
+          </button>
+          <button
+            className={`px-4 py-2 rounded ${activeTab === 'coming-soon' ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
+            onClick={() => setActiveTab('coming-soon')}
+          >
+            Sắp chiếu
+          </button>
+        </div>
+      </div>
+
+      {/* Movie Grid */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+            <div className="text-xl mt-4">Đang tải phim...</div>
+          </div>
+        ) : movies.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="text-xl text-gray-500">Không tìm thấy phim nào</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {movies.map((movie) => (
+              <div key={movie.id} className="cursor-pointer bg-white rounded-lg shadow-md overflow-hidden" onClick={() => handleMovieClick(movie.id)}>
+                <img src={movie.posterUrl} alt={movie.title} className="w-full h-auto object-cover" />
+                <div className="p-4">
+                  <h3 className="font-bold text-lg">{movie.title}</h3>
+                  {movie.status && (
+                    <span className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
+                      movie.status === 'now-showing' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {movie.status === 'now-showing' ? 'Đang chiếu' : 'Sắp chiếu'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
