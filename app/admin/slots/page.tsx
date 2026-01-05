@@ -53,21 +53,24 @@ export default function SlotsPage() {
   };
 
   // --- SỬA LOGIC HIỂN THỊ TẠI ĐÂY ---
-  const formatLocalDateTime = (dateString: string) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '-';
-    
-    // QUAN TRỌNG: Dùng getUTC... để lấy giờ nguyên bản từ DB
-    // Nếu dùng .getHours() (như cũ), trình duyệt sẽ cộng thêm 7 tiếng -> Lệch giờ
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const year = date.getUTCFullYear();
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    
-    return `${hours}:${minutes} ${day}/${month}/${year}`;
-  };
+ const formatLocalDateTime = (dateString: string) => {
+  if (!dateString) return '-';
+  
+  // Khi dùng new Date(dateString), JavaScript sẽ tự động hiểu đây là giờ UTC 
+  // và các hàm getHours(), getDate()... sẽ tự động cộng thêm múi giờ máy tính (VN là +7)
+  const date = new Date(dateString);
+  
+  if (isNaN(date.getTime())) return '-';
+
+  // BỎ chữ "UTC" trong các hàm để lấy giờ đã cộng 7
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${hours}:${minutes} ${day}/${month}/${year}`;
+};
 
   const columns = [
     { key: 'id', label: 'ID', width: '60px' },
