@@ -34,6 +34,35 @@ export async function GET(request: NextRequest) {
       skip,
       take: size,
       orderBy: { id: 'desc' },
+      include: {
+        reviews: {
+          where: {
+            is_deleted: false,
+          },
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            create_at: true,
+            accounts: {
+              select: {
+                id: true,
+                full_name: true,
+                username: true,
+              }
+            }
+          },
+        },
+        _count: {
+          select: {
+            favorites: {
+              where: {
+                is_deleted: false,
+              },
+            },
+          },
+        },
+      },
     });
 
     return NextResponse.json({

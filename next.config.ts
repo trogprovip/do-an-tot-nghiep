@@ -10,7 +10,23 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'ngrok-skip-browser-warning',
+            value: 'true',
+          },
+        ],
+      },
+    ];
+  },
   reactCompiler: true,
+  images: {
+    domains: ['tse2.mm.bing.net', 'tse3.mm.bing.net'],
+  },
 };
 
 export default nextConfig;

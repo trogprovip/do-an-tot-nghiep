@@ -8,9 +8,13 @@ import CGVHeader from '@/components/cgv/CGVHeader';
 import CGVFooter from '@/components/cgv/CGVFooter';
 import BackButton from '@/components/ui/BackButton';
 import ImageHoverZoom from '@/components/ui/ImageHoverZoom';
+import MovieReviewSection from '@/components/MovieReviewSection';
+import { authService, User } from '@/lib/services/authService';
 import { 
   PlayCircleFilled, 
-  ShoppingCartOutlined
+  ShoppingCartOutlined,
+  HeartOutlined,
+  HeartFilled
 } from '@ant-design/icons';
 import { Spin } from 'antd';
 import Link from 'next/link';
@@ -18,10 +22,18 @@ import Link from 'next/link';
 export default function MovieDetailPage() {
   const params = useParams();
   const movieId = params?.id as string;
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteCount, setFavoriteCount] = useState(0);
+
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    setCurrentUser(user);
+  }, []);
 
   useEffect(() => {
     if (movieId) {
@@ -29,15 +41,123 @@ export default function MovieDetailPage() {
     }
   }, [movieId]);
 
+  useEffect(() => {
+    if (currentUser && movieId) {
+      fetchFavoriteStatus();
+    }
+  }, [currentUser, movieId]);
+
+  // Listen for favorites updates from other pages
+  useEffect(() => {
+    const handleFavoritesUpdate = () => {
+      if (currentUser && movieId) {
+        fetchFavoriteStatus();
+      }
+    };
+
+    window.addEventListener('favorites_updated', handleFavoritesUpdate);
+    
+    return () => {
+      window.removeEventListener('favorites_updated', handleFavoritesUpdate);
+    };
+  }, [currentUser, movieId]);
+
   const fetchMovie = async () => {
     try {
       setLoading(true);
       const data = await movieService.getMovie(parseInt(movieId));
       setMovie(data);
+      
+      // Fetch favorite status and count
+      if (currentUser) {
+        await fetchFavoriteStatus();
+      }
     } catch (error) {
       console.error('Error fetching movie:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFavoriteStatus = async () => {
+    try {
+      // Check if user has favorited this movie
+      const response = await fetch('/api/favorites');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          const favoriteIds = new Set(result.data.map((movie: { id: number }) => movie.id));
+          setIsFavorited(favoriteIds.has(parseInt(movieId)));
+        }
+      }
+      
+      // Get favorite count for this movie
+      const countResponse = await fetch(`/api/favorites?movieId=${movieId}`);
+      if (countResponse.ok) {
+        const countResult = await countResponse.json();
+        if (countResult.success) {
+          setFavoriteCount(countResult.count);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching favorite status:', error);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!currentUser) {
+      alert('Vui lòng đăng nhập để thêm phim yêu thích');
+      return;
+    }
+
+    try {
+      const isCurrentlyFavorited = isFavorited;
+      
+      if (isCurrentlyFavorited) {
+        // Remove from favorites
+        const response = await fetch(`/api/favorites?movieId=${movieId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          setIsFavorited(false);
+          setFavoriteCount(prev => Math.max(0, prev - 1));
+          
+          // Notify other pages about favorite change
+          localStorage.setItem('favorites_updated', Date.now().toString());
+          window.dispatchEvent(new Event('favorites_updated'));
+        }
+      } else {
+        // Add to favorites
+        const response = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ movieId: parseInt(movieId) }),
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setIsFavorited(true);
+            setFavoriteCount(prev => prev + 1);
+            
+            // Notify other pages about favorite change
+            localStorage.setItem('favorites_updated', Date.now().toString());
+            window.dispatchEvent(new Event('favorites_updated'));
+          }
+        } else if (response.status === 400) {
+          // Movie already in favorites, update UI
+          setIsFavorited(true);
+          
+          // Notify other pages about favorite change
+          localStorage.setItem('favorites_updated', Date.now().toString());
+          window.dispatchEvent(new Event('favorites_updated'));
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
     }
   };
 
@@ -150,17 +270,6 @@ export default function MovieDetailPage() {
                   </div>
                 </div>
 
-                {/* Format Badges */}
-                <div className="flex gap-2 mb-6 flex-wrap">
-                  <div className="border-2 border-gray-300 px-3 py-1 text-xs font-bold text-gray-700">2D</div>
-                  <div className="border-2 border-blue-500 px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50">3D</div>
-                  <div className="border-2 border-gray-300 px-3 py-1 text-xs font-bold text-gray-700">4DX</div>
-                  <div className="border-2 border-gray-300 px-3 py-1 text-xs font-bold text-gray-700">IMAX</div>
-                  <div className="border-2 border-gray-300 px-3 py-1 text-xs font-bold text-gray-700">SCREENX</div>
-                  <div className="border-2 border-orange-500 px-3 py-1 text-xs font-bold text-orange-600 bg-orange-50">STARIUM</div>
-                  <div className="border-2 border-gray-300 px-3 py-1 text-xs font-bold text-gray-700">ULTRA 4DX</div>
-                </div>
-
                 {/* Social & Buttons */}
                 <div className="flex gap-3 mb-6">
                   <Link href={`/cgv/movies/${movie.id}/showtimes`}>
@@ -169,6 +278,22 @@ export default function MovieDetailPage() {
                       MUA VÉ
                     </button>
                   </Link>
+                  
+                  <button
+                    onClick={toggleFavorite}
+                    className={`px-6 py-2 font-bold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-lg/50 ${
+                      isFavorited 
+                        ? 'bg-red-50 text-red-600 hover:bg-red-100 hover:shadow-red-600/50' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-gray-600/50'
+                    }`}
+                  >
+                    {isFavorited ? (
+                      <HeartFilled className="text-lg" />
+                    ) : (
+                      <HeartOutlined className="text-lg" />
+                    )}
+                    {isFavorited ? 'ĐÃ YÊU THÍCH' : 'YÊU THÍCH'}
+                  </button>
                   
                   {trailerEmbedUrl && (
                     <button
@@ -179,6 +304,13 @@ export default function MovieDetailPage() {
                       XEM TRAILER
                     </button>
                   )}
+                </div>
+
+                {/* Favorite Count */}
+                <div className="flex items-center gap-2 mb-6">
+                  <span className="text-sm text-gray-600">
+                    {favoriteCount} người đã yêu thích phim này
+                  </span>
                 </div>
 
                 {/* Description */}
@@ -192,6 +324,14 @@ export default function MovieDetailPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="container mx-auto px-4 py-8">
+          <MovieReviewSection 
+            movieId={parseInt(movieId)} 
+            userId={currentUser?.id}
+          />
         </div>
 
       </div>

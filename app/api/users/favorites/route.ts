@@ -14,38 +14,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get unique movies that user has booked (as favorite movies)
-    const bookedMovies = await prisma.tickets.findMany({
+    // Get actual favorite movies from favorites table
+    const favoriteRecords = await prisma.favorites.findMany({
       where: {
         account_id: userPayload.id,
         is_deleted: false,
-        status: 'confirmed', // Only count confirmed bookings
       },
       include: {
-        slots: {
-          include: {
-            movies: true,
-          },
-        },
+        movies: true,
       },
       orderBy: {
-        tickets_date: 'desc',
+        create_at: 'desc',
       },
     });
 
-    // Get unique movies only (remove duplicates)
-    const uniqueMovies = bookedMovies.filter((booking, index, self) =>
-      index === self.findIndex((b) => b.slots.movie_id === booking.slots.movie_id)
-    );
-
     // Transform data to match frontend interface
-    const favoriteMovies = uniqueMovies.map((booking) => ({
-      id: booking.slots.movies.id,
-      title: booking.slots.movies.title,
-      poster_url: booking.slots.movies.poster_url || 'https://via.placeholder.com/300x450',
-      genre: booking.slots.movies.genre || 'N/A',
-      duration: booking.slots.movies.duration,
-      release_date: booking.slots.movies.release_date?.toISOString() || new Date().toISOString(),
+    const favoriteMovies = favoriteRecords.map((favorite) => ({
+      id: favorite.movies.id,
+      title: favorite.movies.title,
+      poster_url: favorite.movies.poster_url || 'https://via.placeholder.com/300x450',
+      genre: favorite.movies.genre || 'N/A',
+      duration: favorite.movies.duration,
+      release_date: favorite.movies.release_date?.toISOString() || new Date().toISOString(),
     }));
 
     return NextResponse.json({

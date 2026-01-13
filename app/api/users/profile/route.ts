@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserFromToken, getAdminFromToken } from '@/lib/jwt';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
         email: true,
         phone: true,
         full_name: true,
+        avatar_url: true,
         role: true,
         create_at: true,
       },
@@ -45,7 +48,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         full_name: user.full_name,
         phone: user.phone,
-        avatar_url: null, // TODO: Add avatar_url field to database
+        avatar_url: user.avatar_url,
         membership_tier: user.role === 'admin' ? 'PLATINUM' : 'STANDARD', // Mock membership tier
         points: 0, // TODO: Add points field to database
         created_at: user.create_at,
@@ -130,9 +133,25 @@ export async function PUT(request: NextRequest) {
         }
 
         // TODO: Upload to cloud storage (AWS S3, Cloudinary, etc.)
-        // For now, creating a mock URL
+        // For now, save to public directory
         const timestamp = Date.now();
-        avatar_url = `https://example.com/avatars/user_${userPayload.id}_${timestamp}.jpg`;
+        const fileName = `user_${userPayload.id}_${timestamp}.jpg`;
+        const publicPath = `/avatars/${fileName}`;
+        
+        // Create avatars directory if it doesn't exist
+        const avatarsDir = join(process.cwd(), 'public', 'avatars');
+        try {
+          await mkdir(avatarsDir, { recursive: true });
+        } catch (error) {
+          // Directory already exists
+        }
+        
+        // Save file to public/avatars directory
+        const buffer = Buffer.from(await avatar.arrayBuffer());
+        const filePath = join(avatarsDir, fileName);
+        await writeFile(filePath, buffer);
+        
+        avatar_url = publicPath;
       }
 
       // Update user profile
@@ -142,8 +161,8 @@ export async function PUT(request: NextRequest) {
           full_name,
           email,
           phone,
-          // TODO: Add avatar_url field to database
-          // TODO: Add updated_at field to database
+          avatar_url,
+          update_at: new Date(),
         },
         select: {
           id: true,
@@ -151,6 +170,7 @@ export async function PUT(request: NextRequest) {
           email: true,
           phone: true,
           full_name: true,
+          avatar_url: true,
           role: true,
           create_at: true,
         },
@@ -164,7 +184,7 @@ export async function PUT(request: NextRequest) {
           email: updatedUser.email,
           full_name: updatedUser.full_name,
           phone: updatedUser.phone,
-          avatar_url: null, // TODO: Add avatar_url field to database
+          avatar_url: updatedUser.avatar_url,
           membership_tier: updatedUser.role === 'admin' ? 'PLATINUM' : 'STANDARD', // Mock membership tier
           points: 0, // TODO: Add points field to database
           created_at: updatedUser.create_at,
@@ -210,7 +230,7 @@ export async function PUT(request: NextRequest) {
           full_name,
           email,
           phone,
-          // TODO: Add updated_at field to database
+          update_at: new Date(),
         },
         select: {
           id: true,
@@ -218,6 +238,7 @@ export async function PUT(request: NextRequest) {
           email: true,
           phone: true,
           full_name: true,
+          avatar_url: true,
           role: true,
           create_at: true,
         },
@@ -231,7 +252,7 @@ export async function PUT(request: NextRequest) {
           email: updatedUser.email,
           full_name: updatedUser.full_name,
           phone: updatedUser.phone,
-          avatar_url: null, // TODO: Add avatar_url field to database
+          avatar_url: updatedUser.avatar_url,
           membership_tier: updatedUser.role === 'admin' ? 'PLATINUM' : 'STANDARD', // Mock membership tier
           points: 0, // TODO: Add points field to database
           created_at: updatedUser.create_at,

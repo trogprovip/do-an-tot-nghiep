@@ -304,12 +304,6 @@ export default function SlotsPage() {
           />
         </div>
       )}
-
-      {!loading && slots.length > 0 && (
-        <div className="mt-4 text-sm text-gray-600 text-center">
-          Hiển thị {slots.length} suất chiếu
-        </div>
-      )}
     </div>
   );
 }

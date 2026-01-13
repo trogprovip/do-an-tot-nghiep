@@ -19,6 +19,20 @@ export interface Movie {
   create_at: Date | null;
   update_at: Date | null;
   is_deleted: boolean | null;
+  reviews?: {
+    id: number;
+    rating: number;
+    comment: string | null;
+    create_at: string;
+    accounts: {
+      id: number;
+      full_name: string;
+      username: string;
+    };
+  }[];
+  _count?: {
+    favorites: number;
+  };
 }
 
 export interface CreateMovieDto {

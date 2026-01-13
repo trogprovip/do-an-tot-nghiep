@@ -17,7 +17,8 @@ import {
   ChevronRight,
   Tag,
   Armchair,
-  Sofa
+  Sofa,
+  Star
 } from 'lucide-react';
 import { DollarCircleOutlined } from '@ant-design/icons';
 // Phân nhóm menu để sidebar cân đối hơn
@@ -32,6 +33,7 @@ const menuGroups = [
     title: 'NỘI DUNG & SẢN PHẨM',
     items: [
       { icon: Film, label: 'Quản lý Phim', href: '/admin/movies' },
+      { icon: Star, label: 'Quản lý Đánh giá', href: '/admin/reviews' },
       { icon: Newspaper, label: 'Quản lý Tin tức', href: '/admin/news' },
       { icon: ShoppingBag, label: 'Quản lý Sản phẩm', href: '/admin/products' },
     ]

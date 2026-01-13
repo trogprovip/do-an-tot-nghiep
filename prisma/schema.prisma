@@ -14,10 +14,14 @@ model accounts {
   email         String        @unique(map: "email") @db.VarChar(50)
   phone         String?       @db.VarChar(15)
   full_name     String        @db.VarChar(50)
+  avatar_url    String?       @db.VarChar(255)
   role          accounts_role @default(user)
   create_at     DateTime?     @db.DateTime(0)
+  update_at     DateTime?     @db.DateTime(0)
   is_deleted    Boolean?      @default(false)
   tickets       tickets[]
+  favorites     favorites[]
+  reviews       reviews[]
 }
 
 model bookingseats {
@@ -81,6 +85,8 @@ model movies {
   is_deleted   Boolean?       @default(false)
   moviecinemas moviecinemas[]
   slots        slots[]
+  favorites    favorites[]
+  reviews      reviews[]
 }
 
 model news {
@@ -215,6 +221,40 @@ model ticketsdetails {
   @@index([tickets_id], map: "tickets_id")
 }
 
+model favorites {
+  id         Int       @id @default(autoincrement()) @db.UnsignedInt
+  account_id Int       @db.UnsignedInt
+  movie_id   Int       @db.UnsignedInt
+  create_at  DateTime? @default(now()) @db.DateTime(0)
+  is_deleted Boolean?  @default(false)
+  accounts   accounts  @relation(fields: [account_id], references: [id], onDelete: Cascade, map: "favorites_ibfk_1")
+  movies     movies    @relation(fields: [movie_id], references: [id], onDelete: Cascade, map: "favorites_ibfk_2")
+
+  @@unique([account_id, movie_id], map: "account_id")
+  @@index([movie_id], map: "idx_favorites_movie_id")
+  @@index([account_id], map: "idx_favorites_account_id")
+}
+
+model reviews {
+  id         Int            @id @default(autoincrement()) @db.UnsignedInt
+  account_id Int            @db.UnsignedInt
+  movie_id   Int            @db.UnsignedInt
+  rating     Int            @db.UnsignedTinyInt
+  comment    String?        @db.Text
+  status     reviews_status @default(pending)
+  create_at  DateTime?      @default(now()) @db.DateTime(0)
+  update_at  DateTime?      @db.DateTime(0)
+  is_deleted Boolean?       @default(false)
+  accounts   accounts       @relation(fields: [account_id], references: [id], onDelete: Cascade, map: "reviews_ibfk_1")
+  movies     movies         @relation(fields: [movie_id], references: [id], onDelete: Cascade, map: "reviews_ibfk_2")
+
+  @@unique([account_id, movie_id], map: "account_id_2")
+  @@index([movie_id], map: "idx_reviews_movie_id")
+  @@index([account_id], map: "idx_reviews_account_id")
+  @@index([rating], map: "idx_reviews_rating")
+  @@index([status], map: "idx_reviews_status")
+}
+
 enum products_category {
   food
   drink
@@ -258,4 +298,10 @@ enum tickets_status {
   pending
   confirmed
   cancelled
+}
+
+enum reviews_status {
+  pending
+  approved
+  rejected
 }

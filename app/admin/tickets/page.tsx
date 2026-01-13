@@ -20,28 +20,54 @@ export default function TicketsPage() {
   const [deletingTicketId, setDeletingTicketId] = useState<number | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
+  const [pagination, setPagination] = useState({
+    currentPage: 0,
+    totalPages: 0,
+    totalElements: 0,
+    size: 5
+  });
+
   useEffect(() => {
     fetchTickets();
-  }, [searchTerm, statusFilter, paymentStatusFilter]);
+  }, [searchTerm, statusFilter, paymentStatusFilter, pagination.currentPage]);
 
-  const fetchTickets = async () => {
+const fetchTickets = async () => {
     try {
       setLoading(true);
-      // Gọi API: Lưu ý kiểm tra xem hàm này trong ticketService trả về đúng cấu trúc { content: ... } không
       const response = await ticketService.getTickets({
-        page: 0,
-        size: 100,
+        page: pagination.currentPage,
+        size: pagination.size,
         search: searchTerm || undefined,
+        // Nếu API hỗ trợ filter status thì truyền thêm vào đây
       });
-      // Nếu API trả về mảng trực tiếp thì dùng response, nếu trả về object phân trang thì dùng response.content
-      setTickets(Array.isArray(response) ? response : response.content || []);
+
+      // Cập nhật dữ liệu và thông số phân trang
+      if (response && response.content) {
+        setTickets(response.content);
+        setPagination(prev => ({
+          ...prev,
+          totalPages: response.totalPages || 0,
+          totalElements: response.totalElements || 0
+        }));
+      } else {
+        // Fallback nếu API trả về mảng trực tiếp
+        setTickets(Array.isArray(response) ? response : []);
+      }
     } catch (error) {
       console.error('Error fetching tickets:', error);
-      // Không alert lỗi ở đây để tránh spam popup khi mới load trang
     } finally {
       setLoading(false);
     }
   };
+
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
+    };
+
+    const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setPagination(prev => ({ ...prev, currentPage: 0 }));
+      };
 
   const handleEditStatus = (ticket: Ticket) => {
     setEditingTicketId(ticket.id);
@@ -341,16 +367,25 @@ export default function TicketsPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={filteredTickets}
-        />
-      )}
+{loading ? (
+  <div className="flex items-center justify-center py-12">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
+) : (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <DataTable
+      columns={columns}
+      data={tickets} // Lưu ý: Nên dùng tickets trực tiếp nếu đã phân trang từ API
+      pagination={{
+        currentPage: pagination.currentPage,
+        totalPages: pagination.totalPages,
+        totalElements: pagination.totalElements,
+        size: pagination.size,
+        onPageChange: handlePageChange
+      }}
+    />
+  </div>
+)}
 
       {/* Modal chi tiết vé */}
       {selectedTicket && (

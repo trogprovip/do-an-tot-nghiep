@@ -36,11 +36,8 @@ export default function EditProfilePage() {
 
   // Khởi tạo form instance một cách ổn định
   useEffect(() => {
-    // Reset form khi component unmount
-    return () => {
-      form.resetFields();
-    };
-  }, [form]);
+    // Không cần cleanup function ở đây để tránh lỗi form connection
+  }, []);
 
   const fetchUserData = useCallback(async () => {
     try {
@@ -55,11 +52,14 @@ export default function EditProfilePage() {
       
       if (result.success) {
         setUser(result.data);
-        form.setFieldsValue({
-          full_name: result.data.full_name,
-          email: result.data.email,
-          phone: result.data.phone
-        });
+        // Sử dụng setFieldsValue một cách an toàn
+        setTimeout(() => {
+          form.setFieldsValue({
+            full_name: result.data.full_name,
+            email: result.data.email,
+            phone: result.data.phone
+          });
+        }, 0);
       } else {
         throw new Error(result.error || 'Failed to fetch user data');
       }
@@ -79,11 +79,14 @@ export default function EditProfilePage() {
         created_at: '2024-01-15'
       };
       setUser(mockUser);
-      form.setFieldsValue({
-        full_name: mockUser.full_name,
-        email: mockUser.email,
-        phone: mockUser.phone
-      });
+      // Sử dụng setFieldsValue một cách an toàn
+      setTimeout(() => {
+        form.setFieldsValue({
+          full_name: mockUser.full_name,
+          email: mockUser.email,
+          phone: mockUser.phone
+        });
+      }, 0);
     } finally {
       setLoading(false);
     }
@@ -197,6 +200,11 @@ export default function EditProfilePage() {
                 onFinish={handleSubmit}
                 className="space-y-6"
                 preserve={false}
+                initialValues={{
+                  full_name: user?.full_name || '',
+                  email: user?.email || '',
+                  phone: user?.phone || ''
+                }}
               >
                 {/* Avatar Upload */}
                 <div className="text-center mb-8">

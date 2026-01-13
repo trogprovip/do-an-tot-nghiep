@@ -122,9 +122,20 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
       // Handle VNPay payment
       if (paymentMethod === 'qr_code') {
         const totalAmount = getTotalAmount();
-        const orderId = `BOOKING_${slotId}_${Date.now()}`;
 
         try {
+          // 1️⃣ Tạo booking với status pending trước
+          const bookingResponse = await createPendingBooking();
+          
+          if (!bookingResponse.success) {
+            alert('Không thể tạo đơn hàng, vui lòng thử lại');
+            return;
+          }
+
+          const bookingId = bookingResponse.data.id;
+          const orderId = `BOOKING_${bookingId}`;
+
+          // 2️⃣ Gọi VNPay với booking ID
           const response = await fetch('/api/payment/vnpay/create', {
             method: 'POST',
             headers: {
@@ -133,18 +144,22 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
             body: JSON.stringify({
               amount: totalAmount,
               orderId: orderId,
-              orderInfo: 'abcd',
+              orderInfo: `Thanh toan ve xem phim - Booking ID: ${bookingId}`,
             }),
           });
 
           const result = await response.json();
-          console.log("result payment",result);
+          console.log("result payment", result);
 
           if (response.ok && result.success) {
-            // Redirect to VNPay
-            window.location.href = result.paymentUrl;
+            // 3️⃣ Redirect đến VNPay
+            setTimeout(() => {
+              window.location.href = result.paymentUrl;
+            }, 100);
             console.log(result.paymentUrl);
           } else {
+            // Nếu VNPay thất bại, cập nhật booking status thành failed
+            await updateBookingStatus(bookingId, 'cancelled', 'failed');
             alert(result.error || 'Tạo thanh toán VNPay thất bại');
           }
         } catch (error) {
@@ -228,6 +243,100 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
     } catch (error) {
       console.error('Payment error:', error);
       alert('Có lỗi xảy ra, vui lòng thử lại');
+    }
+  };
+
+  // Helper function để tạo booking pending
+  const createPendingBooking = async () => {
+    try {
+      // Fetch slot and seat information to calculate accurate prices
+      let selectedSeatsWithPrices: Array<{seat_id: number; seat_price: number}> = [];
+      
+      if (bookingData?.selectedSeats && bookingData.selectedSeats.length > 0) {
+        try {
+          // Fetch slot info to get base price
+          const slotRes = await fetch(`/api/slots/${slotId}`);
+          const slotData = await slotRes.json();
+          const basePrice = slotData.price || 0;
+
+          // Fetch seats for this room to get seat types and multipliers
+          const seatsRes = await fetch(`/api/seats?room_id=${slotData.rooms?.id}`);
+          const seatsData = await seatsRes.json();
+          const allSeats = seatsData.content || [];
+
+          // Calculate price for each selected seat
+          selectedSeatsWithPrices = bookingData.selectedSeats.map(seatId => {
+            const seat = allSeats.find((s: any) => s.id === seatId);
+            const multiplier = seat?.seattypes?.price_multiplier || 1;
+            const seatPrice = Math.round(basePrice * multiplier);
+            return {
+              seat_id: seatId,
+              seat_price: seatPrice
+            };
+          });
+        } catch (error) {
+          console.error('Error fetching seat pricing:', error);
+          // Fallback: distribute total price evenly
+          selectedSeatsWithPrices = bookingData.selectedSeats.map(seatId => ({
+            seat_id: seatId,
+            seat_price: Math.round((bookingData?.totalPrice || 0) / (bookingData?.selectedSeats.length || 1))
+          }));
+        }
+      }
+
+      const bookingRequest = {
+        slotId: parseInt(slotId),
+        selectedSeats: selectedSeatsWithPrices,
+        combos: comboData?.combos.map(combo => ({
+          product_id: combo.product.id,
+          quantity: combo.quantity,
+          unit_price: combo.product.price,
+          total_price: combo.product.price * combo.quantity,
+        })) || [],
+        totalAmount: getTotalAmount(),
+        finalAmount: getTotalAmount(),
+        // Force pending status for VNPay
+        status: 'pending',
+        payment_status: 'unpaid'
+      };
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(bookingRequest),
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating pending booking:', error);
+      return { success: false, error: 'Không thể tạo đơn hàng' };
+    }
+  };
+
+  // Helper function để cập nhật booking status
+  const updateBookingStatus = async (bookingId: number, status: string, paymentStatus?: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/bookings/${bookingId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: status,
+          payment_status: paymentStatus
+        }),
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      return { success: false };
     }
   };
 
