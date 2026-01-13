@@ -3,8 +3,9 @@
 
 import React, { useState, useEffect } from 'react';
 import DataTable from '@/components/DataTable';
-import { Search, Save, X, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, Save, X, Trash2, Eye } from 'lucide-react';
 import { ticketService, Ticket } from '@/lib/services/ticketService';
+import Link from 'next/link';
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -326,9 +327,18 @@ const fetchTickets = async () => {
   ];
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý Vé</h1>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Quản lý Vé</h1>
+          <p className="text-gray-600 mt-1">Danh sách tất cả vé đã đặt</p>
+        </div>
+        <Link href="/admin/tickets/create">
+          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+            <Plus className="w-4 h-4" />
+            Thêm vé
+          </button>
+        </Link>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
@@ -367,25 +377,51 @@ const fetchTickets = async () => {
         </div>
       </div>
 
-{loading ? (
-  <div className="flex items-center justify-center py-12">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  </div>
-) : (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <DataTable
-      columns={columns}
-      data={tickets} // Lưu ý: Nên dùng tickets trực tiếp nếu đã phân trang từ API
-      pagination={{
-        currentPage: pagination.currentPage,
-        totalPages: pagination.totalPages,
-        totalElements: pagination.totalElements,
-        size: pagination.size,
-        onPageChange: handlePageChange
-      }}
-    />
-  </div>
-)}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải danh sách vé...</p>
+          </div>
+        </div>
+      ) : tickets.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="text-gray-400 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có vé nào</h3>
+          <p className="text-gray-500 mb-4">
+            {searchTerm ? 'Không tìm thấy vé phù hợp' : 'Hãy thêm vé đầu tiên'}
+          </p>
+          {!searchTerm && (
+            <Link href="/admin/tickets/create">
+              <button className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <Plus className="w-5 h-5" />
+                Thêm vé mới
+              </button>
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <DataTable
+            columns={columns}
+            data={filteredTickets}
+            onEdit={handleEditStatus}
+            onDelete={(row) => handleDelete(row.id, row.tickets_code)}
+            onView={handleView}
+            pagination={{
+              currentPage: pagination.currentPage,
+              totalPages: pagination.totalPages,
+              totalElements: pagination.totalElements,
+              size: pagination.size,
+              onPageChange: handlePageChange
+            }}
+          />
+        </div>
+      )}
 
       {/* Modal chi tiết vé */}
       {selectedTicket && (
