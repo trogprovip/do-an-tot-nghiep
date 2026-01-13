@@ -156,7 +156,6 @@ const fetchTickets = async () => {
 
   const columns = [
     { key: 'id', label: 'ID', width: '60px' },
-    // Kiểm tra kỹ tên trường này khớp với API trả về (ticket_code hay tickets_code?)
     { key: 'tickets_code', label: 'Mã vé', width: '120px' }, 
     { 
       key: 'accounts', 
@@ -210,20 +209,7 @@ const fetchTickets = async () => {
       key: 'payment_status', 
       label: 'Thanh toán',
       width: '150px',
-      render: (value: string, row: Ticket) => {
-        if (editingTicketId === row.id) {
-          return (
-            <select
-              value={editingPaymentStatus}
-              onChange={(e) => setEditingPaymentStatus(e.target.value)}
-              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="unpaid">Chưa thanh toán</option>
-              <option value="paid">Đã thanh toán</option>
-              <option value="refunded">Đã hoàn tiền</option>
-            </select>
-          );
-        }
+      render: (value: string) => {
         const statusColors: Record<string, string> = {
           paid: 'bg-green-100 text-green-800',
           unpaid: 'bg-yellow-100 text-yellow-800',
@@ -240,21 +226,7 @@ const fetchTickets = async () => {
       key: 'status', 
       label: 'Trạng thái',
       width: '150px',
-      render: (value: string, row: Ticket) => {
-        if (editingTicketId === row.id) {
-          return (
-            <select
-              value={editingStatus}
-              onChange={(e) => setEditingStatus(e.target.value)}
-              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-            <option value="pending">Chờ xét duyệt</option>
-              <option value="confirmed">Đã xác nhận</option>
-              <option value="used">Đã sử dụng</option>
-              <option value="cancelled">Đã hủy</option>
-            </select>
-          );
-        }
+      render: (value: string) => {
         const statusColors: Record<string, string> = {
           pending: 'bg-yellow-100 text-yellow-800',
           confirmed: 'bg-blue-100 text-blue-800',
@@ -268,77 +240,12 @@ const fetchTickets = async () => {
         );
       }
     },
-    {
-      key: 'actions',
-      label: 'Hành động',
-      width: '160px',
-      render: (_value: string, row: Ticket) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleView(row)}
-            className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
-            title="Xem chi tiết"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          {editingTicketId === row.id ? (
-            <>
-              <button
-                onClick={() => handleSaveStatus(row.id)}
-                className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
-                title="Lưu"
-              >
-                <Save className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleCancelEdit}
-                className="p-1 text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded"
-                title="Hủy"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => handleEditStatus(row)}
-                className="px-2 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
-                title="Sửa"
-              >
-                Sửa
-              </button>
-              <button
-                onClick={() => handleDelete(row.id, row.tickets_code)}
-                disabled={deletingTicketId === row.id}
-                className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
-                title="Xóa"
-              >
-                {deletingTicketId === row.id ? (
-                  <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-              </button>
-            </>
-          )}
-        </div>
-      )
-    },
   ];
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý Vé</h1>
-          <p className="text-gray-600 mt-1">Danh sách tất cả vé đã đặt</p>
-        </div>
-        <Link href="/admin/tickets/create">
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
-            <Plus className="w-4 h-4" />
-            Thêm vé
-          </button>
-        </Link>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý Vé</h1>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
@@ -379,30 +286,7 @@ const fetchTickets = async () => {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Đang tải danh sách vé...</p>
-          </div>
-        </div>
-      ) : tickets.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <div className="text-gray-400 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có vé nào</h3>
-          <p className="text-gray-500 mb-4">
-            {searchTerm ? 'Không tìm thấy vé phù hợp' : 'Hãy thêm vé đầu tiên'}
-          </p>
-          {!searchTerm && (
-            <Link href="/admin/tickets/create">
-              <button className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <Plus className="w-5 h-5" />
-                Thêm vé mới
-              </button>
-            </Link>
-          )}
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
