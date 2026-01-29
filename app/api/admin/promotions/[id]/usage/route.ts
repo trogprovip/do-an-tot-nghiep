@@ -39,9 +39,12 @@ export async function GET(
     const page = parseInt(searchParams.get('page') || '0');
     const size = parseInt(searchParams.get('size') || '10');
 
-    // Get usage with relations
-    const usage = await (prisma as any).promotion_usage.findMany({
-      where: { promotion_id: id },
+    // Get usage with relations (hiển thị TẤT CẢ người đã KÍCH HOẠT mã)
+    const usage = await (prisma as any).promotionusage.findMany({
+      where: { 
+        promotion_id: id,
+        tickets_id: 1 // Chỉ hiển thị các usage đã kích hoạt (tickets_id = 1)
+      },
       include: {
         accounts: {
           select: {
@@ -66,9 +69,12 @@ export async function GET(
       take: size,
     });
 
-    // Get total count
-    const totalElements = await (prisma as any).promotion_usage.count({
-      where: { promotion_id: id },
+    // Get total count (đếm TẤT CẢ người đã kích hoạt)
+    const totalElements = await (prisma as any).promotionusage.count({
+      where: { 
+        promotion_id: id,
+        tickets_id: 1 // Chỉ đếm các usage đã kích hoạt (tickets_id = 1)
+      },
     });
 
     const totalPages = Math.ceil(totalElements / size);

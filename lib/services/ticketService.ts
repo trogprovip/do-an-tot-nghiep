@@ -17,6 +17,8 @@ export interface Ticket {
   status: 'pending' | 'confirmed' | 'cancelled' | 'used';
   note: string | null;
   is_deleted: boolean;
+  promotion_id: number | null;
+  promotion_code: string | null;
   accounts?: {
     id: number;
     full_name: string;
@@ -31,6 +33,11 @@ export interface Ticket {
     rooms?: {
       room_name: string;
     };
+  };
+  promotions?: {
+    id: number;
+    promotion_code: string;
+    promotion_name: string;
   };
   bookingseats?: Array<{
     id: number;

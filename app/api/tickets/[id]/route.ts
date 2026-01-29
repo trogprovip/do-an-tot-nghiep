@@ -54,6 +54,14 @@ export async function GET(
             products: true,
           },
         },
+        // Lấy thông tin mã khuyến mại
+        promotions: {
+          select: {
+            id: true,
+            promotion_code: true,
+            promotion_name: true,
+          },
+        },
       },
     });
 

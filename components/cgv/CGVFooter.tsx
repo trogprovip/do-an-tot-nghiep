@@ -33,7 +33,7 @@ export default function CGVFooter() {
           <div>
             <h3 className="font-extrabold text-xl text-red-700 mb-6 uppercase tracking-tight border-b-2 border-red-100 inline-block pb-1">CGV Việt Nam</h3>
             <ul className="space-y-3 text-sm font-medium">
-              {['Giới Thiệu', 'Tiện Ích Online', 'Thẻ Quà Tặng', 'Tuyển Dụng', 'Liên Hệ Quảng Cáo'].map((item) => (
+              {['Giới Thiệu', 'Dành cho đối tác', 'Liên Hệ Quảng Cáo'].map((item) => (
                 <li key={item}>
                   <Link href="#" className="flex items-center group">
                     <span className="w-1.5 h-1.5 bg-gray-300 rounded-full mr-2 group-hover:bg-red-600 transition-colors"></span>

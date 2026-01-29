@@ -299,12 +299,17 @@ export default function SeatsPage() {
 
           <div className="mt-8 pt-6 border-t border-gray-200">
             <div className="flex items-center justify-center gap-6 flex-wrap">
-              {seatTypes.map((type) => (
-                <div key={type.id} className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded ${getSeatColor(type.type_name)}`}></div>
-                  <span className="text-sm text-gray-700 font-medium">{type.type_name}</span>
-                </div>
-              ))}
+              {seatTypes
+                .filter((type) => {
+                  // Chỉ hiển thị loại ghế nếu có ít nhất một ghế của loại này trong phòng hiện tại
+                  return seats.some((seat) => seat.seattypes.id === type.id);
+                })
+                .map((type) => (
+                  <div key={type.id} className="flex items-center gap-2">
+                    <div className={`w-6 h-6 rounded ${getSeatColor(type.type_name)}`}></div>
+                    <span className="text-sm text-gray-700 font-medium">{type.type_name}</span>
+                  </div>
+                ))}
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded bg-gray-300"></div>
                 <span className="text-sm text-gray-700 font-medium">Hỏng</span>

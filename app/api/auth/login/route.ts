@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         role: user.role 
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
 
     const userData = {

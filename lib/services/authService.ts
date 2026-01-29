@@ -42,7 +42,7 @@ export const adminAuthService = {
       // Lưu với prefix "admin_" để tách biệt
       localStorage.setItem('admin_auth_token', response.data.token);
       localStorage.setItem('admin_user', JSON.stringify(response.data.user));
-      document.cookie = `admin_auth_token=${response.data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
+      document.cookie = `admin_auth_token=${response.data.token}; path=/; max-age=${24 * 60 * 60}`;
     }
     return response.data;
   },
@@ -84,7 +84,7 @@ export const authService = {
       // Lưu với tên thông thường cho user
       localStorage.setItem('auth_token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      document.cookie = `auth_token=${response.data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
+      document.cookie = `auth_token=${response.data.token}; path=/; max-age=${24 * 60 * 60}`;
     }
     return response.data;
   },

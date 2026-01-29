@@ -1070,24 +1070,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Hướng dẫn sử dụng vé */}
-              <div className="bg-green-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-green-900 mb-3">Hướng Dẫn Sử Dụng Vé</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <CheckCircleFilled className="text-green-600" />
-                    <p className="text-sm text-gray-700">Đến rạp trước 15 phút suất chiếu</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <QrcodeOutlined className="text-green-600" />
-                    <p className="text-sm text-gray-700">Xuất trình mã vé tại quầy check-in</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <ClockCircleOutlined className="text-green-600" />
-                    <p className="text-sm text-gray-700">Mang theo giấy tờ tùy thân để xác nhận</p>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
@@ -1101,6 +1083,150 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Modal chi tiết voucher */}
+{selectedVoucher && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-5 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">Chi Tiết Khuyến Mãi</h2>
+              <button
+                onClick={() => setSelectedVoucher(null)}
+                className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200"
+              >
+                <CloseOutlined className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto flex-1">
+              <div className="p-6 space-y-5">
+                {/* Voucher Card Preview - Enhanced */}
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl blur-xl opacity-30"></div>
+                  <div className="relative flex bg-gradient-to-br from-red-600 via-red-500 to-pink-600 rounded-2xl overflow-hidden shadow-xl">
+                    <div className="w-36 p-5 flex flex-col items-center justify-center text-white relative border-r border-dashed border-white/30">
+                      <div className="absolute -top-4 -right-4 w-8 h-8 bg-white rounded-full shadow-lg" />
+                      <div className="absolute -bottom-4 -right-4 w-8 h-8 bg-white rounded-full shadow-lg" />
+                      
+                      <span className="text-xs font-semibold opacity-90 uppercase tracking-widest mb-1">Giảm</span>
+                      <span className="text-4xl font-black mb-1">
+                        {selectedVoucher.discount_type === 'percentage' 
+                          ? `${selectedVoucher.discount_value}%` 
+                          : `${selectedVoucher.discount_value/1000}k`}
+                      </span>
+                      <span className="text-xs opacity-80">OFF</span>
+                    </div>
+
+                    <div className="flex-1 p-6 text-white">
+                      <h3 className="text-2xl font-bold mb-3 drop-shadow-md">{selectedVoucher.title}</h3>
+                      <div className="flex items-center gap-2 mb-3 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 w-fit">
+                        <TagOutlined className="text-lg" />
+                        <span className="font-mono font-bold text-lg tracking-widest">{selectedVoucher.code}</span>
+                      </div>
+                      <p className="text-white/95 text-sm leading-relaxed">{selectedVoucher.description}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Thông tin chi tiết - Enhanced */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-gray-800">Thông Tin Khuyến Mãi</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white rounded-xl p-3 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Mã khuyến mãi</p>
+                        <p className="font-bold text-gray-900 font-mono text-lg">{selectedVoucher.code}</p>
+                      </div>
+                      <div className="bg-white rounded-xl p-3 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Loại giảm giá</p>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {selectedVoucher.discount_type === 'percentage' ? 'Phần trăm (%)' : 'Số tiền cố định (đ)'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Giá trị giảm</p>
+                      <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 text-3xl">
+                        {selectedVoucher.discount_type === 'percentage' 
+                          ? `${selectedVoucher.discount_value}%` 
+                          : `${selectedVoucher.discount_value.toLocaleString('vi-VN')} đ`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mô tả chi tiết - Enhanced */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-100">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-6 bg-gradient-to-b from-purple-600 to-pink-600 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-gray-800">Mô Tả Chi Tiết</h3>
+                  </div>
+                  <p className="text-gray-700 leading-relaxed bg-white rounded-xl p-4 shadow-sm">{selectedVoucher.description}</p>
+                </div>
+
+                {/* Thời gian hiệu lực - Enhanced */}
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5 border border-orange-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-gradient-to-b from-orange-600 to-amber-600 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-gray-800">Thời Gian Hiệu Lực</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Ngày hết hạn</p>
+                      <div className="flex items-center gap-2">
+                        <CalendarOutlined className="text-orange-600 text-lg" />
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {new Date(selectedVoucher.expired_at).toLocaleDateString('vi-VN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Trạng thái</p>
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold ${
+                        new Date(selectedVoucher.expired_at) >= new Date()
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+                          : 'bg-gradient-to-r from-red-500 to-rose-500 text-white'
+                      }`}>
+                        {new Date(selectedVoucher.expired_at) >= new Date() ? '✓ Còn hiệu lực' : '✗ Đã hết hạn'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Footer Actions - Enhanced */}
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedVoucher.code);
+                  alert('Đã sao chép mã khuyến mãi!');
+                }}
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 flex items-center gap-2"
+              >
+                <TagOutlined />
+                Sao Chép Mã
+              </button>
+              <button
+                onClick={() => setSelectedVoucher(null)}
+                className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 font-medium"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}  
     </div>
   );
 }

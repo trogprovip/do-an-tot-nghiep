@@ -1,15 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import CGVHeader from '@/components/cgv/CGVHeader';
 import CGVFooter from '@/components/cgv/CGVFooter';
 import { authService } from '@/lib/services/authService';
+import { MailOutlined, ArrowLeftOutlined, CheckCircleFilled, RedoOutlined } from '@ant-design/icons';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,69 +38,111 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFDF8]">
-      <CGVHeader />
+    <div className="min-h-screen bg-white font-sans relative">
+      <CGVHeader hideQuickLinks />
 
-      <div className="container mx-auto px-4 py-12 mt-20">
-        <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border-2 border-gray-100">
-          
-          <div className="bg-red-600 py-4 px-8">
-            <h1 className="text-2xl font-black text-white uppercase text-center">
-              QUÊN MẬT KHẨU
-            </h1>
+      {/* Main Content Container */}
+      <div className="relative min-h-screen flex items-center justify-center py-24 px-4 overflow-hidden">
+        
+        {/* Background Ambient Blobs (Giống trang Login) */}
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-red-100 rounded-full mix-blend-multiply filter blur-[100px] opacity-70 animate-blob pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-orange-100 rounded-full mix-blend-multiply filter blur-[100px] opacity-70 animate-blob animation-delay-2000 pointer-events-none" />
+
+        {/* Card Container - Glass Effect */}
+        <div 
+          className={`relative w-full max-w-lg bg-white/80 backdrop-blur-xl rounded-[30px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white/50 p-10 lg:p-14 transition-all duration-700 transform ${
+            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          {/* Header Section */}
+          <div className="text-center mb-10">
+             <h1 className="text-3xl font-black text-gray-900 mb-3 uppercase tracking-tight">
+               {success ? 'Đã Gửi Email!' : 'Quên Mật Khẩu?'}
+             </h1>
+             <p className="text-gray-400 font-medium text-sm px-4 leading-relaxed">
+               {success 
+                 ? 'Vui lòng kiểm tra hộp thư đến (bao gồm cả mục Spam) để nhận hướng dẫn đặt lại mật khẩu.'
+                 : 'Đừng lo lắng. Hãy nhập email đã đăng ký, chúng tôi sẽ giúp bạn lấy lại tài khoản.'}
+             </p>
           </div>
 
-          <div className="p-8">
+          {/* Form Content */}
+          <div className="relative">
             {!success ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <p className="text-gray-700 mb-4">
-                    Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu.
-                  </p>
-                  <label className="block text-gray-800 font-bold mb-2">
-                    Email
+              <form onSubmit={handleSubmit} className="space-y-8">
+                
+                {/* Input Field - Style Luxury Borderless */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                    Địa chỉ Email
                   </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Nhập email của bạn"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
-                    required
-                  />
+                  <div className="relative group">
+                    <MailOutlined className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-600 text-lg transition-colors duration-300" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="vidu@gmail.com"
+                      className="w-full bg-transparent border-b-2 border-gray-100 py-3 pl-8 text-gray-900 font-bold focus:border-red-600 focus:outline-none transition-all duration-300 placeholder:text-gray-300 placeholder:font-normal"
+                      required
+                    />
+                  </div>
                 </div>
 
+                {/* Submit Button - Black to Red Style */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-red-600 text-white py-4 rounded-lg font-black text-lg uppercase hover:bg-red-700 transition-colors disabled:bg-gray-400"
+                  className="w-full py-4 bg-gray-900 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-red-600 hover:shadow-lg hover:shadow-red-200 transition-all duration-300 transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {loading ? 'ĐANG XỬ LÝ...' : 'GỬI YÊU CẦU'}
+                  {loading ? (
+                    'Đang xử lý...'
+                  ) : (
+                    <>
+                      Gửi yêu cầu <RedoOutlined className="text-xs" />
+                    </>
+                  )}
                 </button>
-
-                <div className="text-center">
-                  <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
-                    Quay lại đăng nhập
-                  </Link>
-                </div>
               </form>
             ) : (
-              <div className="text-center space-y-4">
-                <div className="text-green-600 text-5xl mb-4">✓</div>
-                <h2 className="text-2xl font-bold text-gray-800">Thành công!</h2>
-                <p className="text-gray-600">
-                  Hướng dẫn đặt lại mật khẩu đã được gửi đến email của bạn.
-                  Vui lòng kiểm tra hộp thư đến.
-                </p>
-                <Link 
-                  href="/auth/login"
-                  className="inline-block mt-6 bg-red-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-red-700 transition-colors"
-                >
-                  QUAY LẠI ĐĂNG NHẬP
-                </Link>
+              // Success State
+              <div className="text-center animate-fade-in-up">
+                <div className="mb-8 relative inline-block">
+                  <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-75"></div>
+                  <CheckCircleFilled className="text-6xl text-green-500 relative z-10 bg-white rounded-full shadow-lg border-4 border-white" />
+                </div>
+                
+                <div className="space-y-4">
+                  <Link 
+                    href="/auth/login"
+                    className="block w-full py-4 bg-gray-900 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-green-600 hover:shadow-lg hover:shadow-green-200 transition-all duration-300"
+                  >
+                    Về trang đăng nhập
+                  </Link>
+                  
+                  <button 
+                    onClick={() => setSuccess(false)}
+                    className="text-gray-400 text-sm font-semibold hover:text-gray-600 transition-colors"
+                  >
+                    Chưa nhận được? Thử lại
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Footer Back Link */}
+          {!success && (
+            <div className="mt-10 text-center border-t border-gray-100 pt-8">
+              <Link 
+                href="/auth/login" 
+                className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-red-600 transition-colors group"
+              >
+                <ArrowLeftOutlined className="group-hover:-translate-x-1 transition-transform" />
+                Quay lại đăng nhập
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

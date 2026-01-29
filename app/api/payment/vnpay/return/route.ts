@@ -51,6 +51,33 @@ async function updateVoucherUsage(bookingId: string) {
       return;
     }
 
+    // Lấy thông tin promotion để kiểm tra usage_per_user
+    const promotion = await prisma.promotions.findUnique({
+      where: { id: ticket.promotion_id },
+      select: {
+        usage_per_user: true,
+        promotion_code: true
+      }
+    });
+
+    if (!promotion) {
+      console.log(`📝 Promotion not found for id ${ticket.promotion_id}`);
+      return;
+    }
+
+    // Đếm số lần user đã sử dụng voucher này TRƯỚC KHI update
+    const userUsageCount = await prisma.promotionusage.count({
+      where: {
+        account_id: ticket.account_id,
+        promotion_id: ticket.promotion_id,
+        tickets_id: {
+          not: 1 // Chỉ đếm những usage đã có ticket_id thực tế (đã thanh toán)
+        }
+      }
+    });
+
+    console.log(`📊 User ${ticket.account_id} has used voucher ${promotion.promotion_code} ${userUsageCount}/${promotion.usage_per_user} times`);
+
     // Cập nhật promotionusage với ticket_id thực tế
     const updatedUsage = await prisma.promotionusage.updateMany({
       where: {
@@ -66,17 +93,20 @@ async function updateVoucherUsage(bookingId: string) {
 
     console.log(`✅ Updated voucher usage for booking ${bookingId}:`, updatedUsage);
 
-    // Tăng số lần sử dụng của promotion
-    await prisma.promotions.update({
-      where: { id: ticket.promotion_id },
-      data: {
-        usage_count: {
-          increment: 1
+    // Xóa voucher khỏi kho user nếu đã hết lượt sử dụng
+    // Sau khi update, userUsageCount + 1 >= usage_per_user thì xóa các bản ghi còn lại
+    if (userUsageCount + 1 >= promotion.usage_per_user) {
+      // Xóa tất cả các bản ghi còn lại của user với voucher này
+      await prisma.promotionusage.deleteMany({
+        where: {
+          account_id: ticket.account_id,
+          promotion_id: ticket.promotion_id,
+          // Không cần điều kiện tickets_id vì muốn xóa tất cả các bản ghi còn lại
         }
-      }
-    });
+      });
+    }
 
-    console.log(`✅ Incremented promotion usage count for voucher ${ticket.promotion_id}`);
+    console.log(`📝 Voucher usage updated successfully for booking ${bookingId}`);
 
   } catch (error) {
     console.error('❌ Error updating voucher usage:', error);

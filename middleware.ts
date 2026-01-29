@@ -24,6 +24,13 @@ export function middleware(request: NextRequest) {
       const base64Payload = adminToken.split('.')[1];
       const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
       
+      // Kiểm tra token hết hạn
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        const response = NextResponse.redirect(new URL('/admin/login', request.url));
+        response.cookies.delete('admin_auth_token');
+        return response;
+      }
+      
       // Kiểm tra role - CHỈ cho phép admin
       if (payload.role !== 'admin') {
         return NextResponse.redirect(new URL('/admin/login', request.url));
@@ -47,7 +54,12 @@ export function middleware(request: NextRequest) {
       const base64Payload = userToken.split('.')[1];
       const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
       
-      // Có thể check thêm điều kiện cho user nếu cần
+      // Kiểm tra token hết hạn
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        const response = NextResponse.redirect(new URL('/auth/login', request.url));
+        response.cookies.delete('auth_token');
+        return response;
+      }
     } catch (error) {
       console.error('Token parsing failed:', error);
       return NextResponse.redirect(new URL('/auth/login', request.url));

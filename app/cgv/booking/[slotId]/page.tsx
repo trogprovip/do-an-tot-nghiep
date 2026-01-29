@@ -391,22 +391,44 @@ export default function BookingPage({ params }: { params: Promise<{ slotId: stri
                 <div className="w-8 h-8 bg-gray-400 border-2 border-gray-400 rounded"></div>
                 <span className="font-medium">Đã đặt</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-orange-500 border-2 border-orange-500 rounded"></div>
-                <span className="font-medium">Ghế ProVIP</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-yellow-500 border-2 border-yellow-500 rounded"></div>
-                <span className="font-medium">Ghế VIP</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-pink-500 border-2 border-pink-500 rounded"></div>
-                <span className="font-medium">Ghế đôi</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-500 border-2 border-blue-500 rounded"></div>
-                <span className="font-medium">Ghế thường</span>
-              </div>
+              {/* Chỉ hiển thị các loại ghế có trong phòng hiện tại */}
+              {(() => {
+                const uniqueSeatTypes = [...new Set(seats.map(seat => seat.seattypes.id))];
+                const seatTypeLegends = [
+                  { typeId: 'provip', color: 'bg-orange-500', borderColor: 'border-orange-500', name: 'Ghế ProVIP' },
+                  { typeId: 'vip', color: 'bg-yellow-500', borderColor: 'border-yellow-500', name: 'Ghế VIP' },
+                  { typeId: 'couple', color: 'bg-pink-500', borderColor: 'border-pink-500', name: 'Ghế đôi' },
+                  { typeId: 'standard', color: 'bg-blue-500', borderColor: 'border-blue-500', name: 'Ghế thường' }
+                ];
+
+                return seatTypeLegends.map(legend => {
+                  const hasThisType = seats.some(seat => {
+                    const typeName = seat.seattypes?.type_name?.toLowerCase() || '';
+                    if (legend.typeId === 'provip') {
+                      return typeName.includes('provip') || typeName.includes('pro vip');
+                    }
+                    if (legend.typeId === 'vip') {
+                      return typeName.includes('vip') && !typeName.includes('provip') && !typeName.includes('pro vip');
+                    }
+                    if (legend.typeId === 'couple') {
+                      return typeName.includes('couple') || typeName.includes('đôi');
+                    }
+                    if (legend.typeId === 'standard') {
+                      return typeName.includes('standard') || typeName.includes('tiêu chuẩn') || (!typeName.includes('vip') && !typeName.includes('couple') && !typeName.includes('provip') && !typeName.includes('pro vip'));
+                    }
+                    return false;
+                  });
+
+                  if (!hasThisType) return null;
+
+                  return (
+                    <div key={legend.typeId} className="flex items-center gap-2">
+                      <div className={`w-8 h-8 ${legend.color} border-2 ${legend.borderColor} rounded`}></div>
+                      <span className="font-medium">{legend.name}</span>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </>
         )}

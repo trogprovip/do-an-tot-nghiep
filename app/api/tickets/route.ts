@@ -85,6 +85,13 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        promotions: {
+          select: {
+            id: true,
+            promotion_code: true,
+            promotion_name: true,
+          },
+        },
       },
     });
 

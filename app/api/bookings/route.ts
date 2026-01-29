@@ -17,6 +17,8 @@ interface BookingRequest {
   totalAmount: number;
   discountAmount?: number;
   finalAmount: number;
+  voucher_id?: number;
+  promotion_code?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -130,7 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: BookingRequest = await request.json();
-    const { slotId, selectedSeats, combos, totalAmount, discountAmount, finalAmount } = body;
+    const { slotId, selectedSeats, combos, totalAmount, discountAmount, finalAmount, voucher_id, promotion_code } = body;
 
     // Validate required fields
     if (!slotId || !selectedSeats || selectedSeats.length === 0 || !finalAmount) {
@@ -159,6 +161,8 @@ export async function POST(request: NextRequest) {
           status: 'pending', // Bắt đầu với trạng thái chờ xét duyệt
           note: 'Đặt vé thành công qua hệ thống CGV',
           is_deleted: false,
+          promotion_id: voucher_id || null,
+          promotion_code: promotion_code || null,
         },
       });
 

@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     
     if (!userPayload) {
       return NextResponse.json(
-        { success: false, error: 'Authentication required' },
+        { success: false, error: 'Yêu cầu xác thực' },
         { status: 401 }
       );
     }
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching user vouchers:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch vouchers' },
+      { success: false, error: 'Không thể lấy phiếu giảm giá.' },
       { status: 500 }
     );
   }
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     
     if (!userPayload) {
       return NextResponse.json(
-        { success: false, error: 'Authentication required' },
+        { success: false, error: 'Yêu cầu xác thực' },
         { status: 401 }
       );
     }
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     if (!promotion_code) {
       return NextResponse.json(
-        { success: false, error: 'Promotion code is required' },
+        { success: false, error: 'Mã khuyến mãi là bắt buộc' },
         { status: 400 }
       );
     }
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Invalid promotion code',
+          error: 'Mã khuyến mãi không hợp lệ',
           debug: {
             searched_code: promotion_code.toUpperCase(),
             found_any_promotion: !!anyPromotion,
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     if (promotion.end_date && new Date(promotion.end_date) < now) {
       return NextResponse.json(
-        { success: false, error: 'Promotion has expired' },
+        { success: false, error: 'Khuyến mãi đã hết hạn' },
         { status: 400 }
       );
     }
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'You have already used this promotion',
+          error: 'Bạn đã sử dụng chương trình khuyến mãi này rồi.',
           debug: {
             user_id: userPayload.id,
             promotion_id: promotion.id,
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
 
     if (promotion.usage_limit && totalUsage >= promotion.usage_limit) {
       return NextResponse.json(
-        { success: false, error: 'Promotion usage limit reached' },
+        { success: false, error: 'Đã đạt đến giới hạn sử dụng khuyến mãi' },
         { status: 400 }
       );
     }
@@ -208,13 +208,26 @@ export async function POST(request: NextRequest) {
         data: {
           account_id: userPayload.id,
           promotion_id: promotion.id,
-          tickets_id: 1, // Use existing ticket ID
+          tickets_id: 1, // Use placeholder ticket ID
           used_at: new Date(),
           discount_amount: promotion.discount_value,
         },
       });
       
       console.log('Successfully created usage:', usage);
+
+      // Increment promotion usage count when activation code is entered
+      await prisma.promotions.update({
+        where: { id: promotion.id },
+        data: {
+          usage_count: {
+            increment: 1
+          }
+        }
+      });
+
+      console.log(`✅ Incremented promotion usage count for voucher ${promotion.id}`);
+
     } catch (createError) {
       console.error('Error creating usage:', createError);
       throw createError;
@@ -231,12 +244,12 @@ export async function POST(request: NextRequest) {
         code: promotion.promotion_code,
         used_at: usage.used_at,
       },
-      message: 'Voucher activated successfully',
+      message: 'Voucher đã được kích hoạt thành công',
     });
   } catch (error) {
     console.error('Error activating voucher:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to activate voucher' },
+      { success: false, error: 'Không thể kích hoạt mã giảm giá.' },
       { status: 500 }
     );
   }

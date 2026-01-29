@@ -51,7 +51,7 @@ export const adminAuthService = {
       localStorage.setItem('admin_user', JSON.stringify(response.data.user));
       
       // Set cookie cho middleware check
-      document.cookie = `admin_auth_token=${response.data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
+      document.cookie = `admin_auth_token=${response.data.token}; path=/; max-age=${ 24 * 60 * 60}`;
     }
     
     return response.data;
@@ -115,7 +115,7 @@ export const authService = {
       localStorage.setItem('user', JSON.stringify(response.data.user));
       
       // Set cookie cho middleware check
-      document.cookie = `auth_token=${response.data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
+      document.cookie = `auth_token=${response.data.token}; path=/; max-age=${ 24 * 60 * 60}`;
     }
     
     return response.data;

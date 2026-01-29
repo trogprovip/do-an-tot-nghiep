@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Trash2, Users, Ticket, Calendar, Tag, Percent, DollarSign, BarChart3, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Users, Ticket, Calendar, Tag, Percent, DollarSign } from 'lucide-react';
 
 interface Promotion {
   id: number;
@@ -70,10 +70,8 @@ interface PromotionStats {
 export default function PromotionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [promotion, setPromotion] = useState<Promotion | null>(null);
-  const [stats, setStats] = useState<PromotionStats | null>(null);
   const [usage, setUsage] = useState<PromotionUsage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'usage' | 'stats'>('overview');
   const [paramsResolved, setParamsResolved] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
@@ -96,20 +94,14 @@ export default function PromotionDetailPage({ params }: { params: Promise<{ id: 
     
     try {
       setLoading(true);
-      const [promotionRes, statsRes, usageRes] = await Promise.all([
+      const [promotionRes, usageRes] = await Promise.all([
         fetch(`/api/admin/promotions/${paramsResolved.id}`),
-        fetch(`/api/admin/promotions/${paramsResolved.id}/stats`),
         fetch(`/api/admin/promotions/${paramsResolved.id}/usage`)
       ]);
 
       if (promotionRes.ok) {
         const promotionData = await promotionRes.json();
         setPromotion(promotionData);
-      }
-
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
       }
 
       if (usageRes.ok) {
@@ -348,132 +340,39 @@ export default function PromotionDetailPage({ params }: { params: Promise<{ id: 
         )}
       </div>
 
-      {/* Tabs */}
+      {/* Số lượng người kích hoạt */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'overview'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                Tổng quan
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('usage')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'usage'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Ticket className="w-4 h-4" />
-                Lịch sử sử dụng
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('stats')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'stats'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Thống kê
-              </div>
-            </button>
-          </nav>
+        <div className="border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Số lượng người kích hoạt</h3>
+          </div>
         </div>
 
         <div className="p-6">
-          {activeTab === 'overview' && stats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-blue-600 font-medium">Tổng lượt sử dụng</p>
-                    <p className="text-2xl font-bold text-blue-900">{stats.totalUsage}</p>
-                  </div>
-                  <Ticket className="w-8 h-8 text-blue-500" />
-                </div>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-600 font-medium">Tổng giảm giá</p>
-                    <p className="text-2xl font-bold text-green-900">{formatCurrency(stats.totalDiscount)}</p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-green-500" />
-                </div>
-              </div>
-
-              <div className="bg-purple-50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-purple-600 font-medium">User duy nhất</p>
-                    <p className="text-2xl font-bold text-purple-900">{stats.uniqueUsers}</p>
-                  </div>
-                  <Users className="w-8 h-8 text-purple-500" />
-                </div>
-              </div>
-
-              <div className="bg-orange-50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-orange-600 font-medium">Giảm trung bình</p>
-                    <p className="text-2xl font-bold text-orange-900">{formatCurrency(stats.averageDiscount)}</p>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-orange-500" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'usage' && (
-            <div className="overflow-x-auto">
+          <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
+                      ID User
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mã vé
+                      Tài khoản Gmail
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Giảm giá
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thời gian
+                      Thời gian kích hoạt
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {usage.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {item.account?.full_name || item.account?.username || `User ${item.account_id}`}
-                          </div>
-                          <div className="text-sm text-gray-500">{item.account?.email}</div>
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {item.account_id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.tickets?.tickets_code || `#${item.tickets_id}`}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                        {formatCurrency(item.discount_amount)}
+                        {item.account?.email || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(item.used_at)}
@@ -485,56 +384,12 @@ export default function PromotionDetailPage({ params }: { params: Promise<{ id: 
 
               {usage.length === 0 && (
                 <div className="text-center py-12">
-                  <Ticket className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có lượt sử dụng</h3>
-                  <p className="text-gray-500">Khuyến mại này chưa được sử dụng lần nào.</p>
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có người kích hoạt</h3>
+                  <p className="text-gray-500">Chưa có ai kích hoạt khuyến mại này.</p>
                 </div>
               )}
             </div>
-          )}
-
-          {activeTab === 'stats' && stats && (
-            <div className="space-y-6">
-              {/* Top Users */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Top người dùng</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Người dùng
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Số lần sử dụng
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tổng giảm giá
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {stats.topUsers.map((user, index) => (
-                        <tr key={user.account_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.full_name || user.username}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {user.usage_count}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                            {formatCurrency(user.total_discount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

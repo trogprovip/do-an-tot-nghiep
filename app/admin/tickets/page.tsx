@@ -634,8 +634,9 @@ export default function TicketsPage() {
                     <div>
                       <p className="text-sm text-gray-600">Tổng tiền</p>
                       <p className="font-medium text-gray-900">
-                        {Number(
-                          selectedTicket.total_amount || 0
+                        {(
+                          Number(selectedTicket.final_amount || 0) + 
+                          Number(selectedTicket.discount_amount || 0)
                         ).toLocaleString("vi-VN")}{" "}
                         đ
                       </p>
@@ -659,6 +660,17 @@ export default function TicketsPage() {
                       </p>
                     </div>
                   </div>
+                  
+                  {/* Thông tin mã khuyến mại */}
+                  {(selectedTicket.promotion_code || selectedTicket.promotions?.promotion_code) && (
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <p className="text-sm text-gray-600 mb-1">Mã khuyến mại</p>
+                      <p className="font-medium text-green-800">
+                        {selectedTicket.promotion_code || selectedTicket.promotions?.promotion_code}
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">

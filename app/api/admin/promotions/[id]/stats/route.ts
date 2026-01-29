@@ -35,14 +35,24 @@ export async function GET(
       );
     }
 
-    // Get total usage
-    const totalUsage = await (prisma as any).promotion_usage.count({
-      where: { promotion_id: id },
+    // Get total usage (chỉ đếm các usage đã thanh toán thành công)
+    const totalUsage = await (prisma as any).promotionusage.count({
+      where: { 
+        promotion_id: id,
+        tickets_id: {
+          not: 1 // Chỉ đếm những usage đã có ticket_id thực tế (đã thanh toán)
+        }
+      },
     });
 
-    // Get total discount amount
-    const usageData = await (prisma as any).promotion_usage.aggregate({
-      where: { promotion_id: id },
+    // Get total discount amount (chỉ tính các usage đã thanh toán)
+    const usageData = await (prisma as any).promotionusage.aggregate({
+      where: { 
+        promotion_id: id,
+        tickets_id: {
+          not: 1 // Chỉ tính những usage đã có ticket_id thực tế (đã thanh toán)
+        }
+      },
       _sum: {
         discount_amount: true,
       },
@@ -50,10 +60,15 @@ export async function GET(
 
     const totalDiscount = usageData._sum.discount_amount?.toNumber() || 0;
 
-    // Get unique users
-    const uniqueUsersData = await (prisma as any).promotion_usage.groupBy({
+    // Get unique users (chỉ đếm các usage đã thanh toán)
+    const uniqueUsersData = await (prisma as any).promotionusage.groupBy({
       by: ['account_id'],
-      where: { promotion_id: id },
+      where: { 
+        promotion_id: id,
+        tickets_id: {
+          not: 1 // Chỉ đếm những usage đã có ticket_id thực tế (đã thanh toán)
+        }
+      },
     });
 
     const uniqueUsers = uniqueUsersData.length;
@@ -65,10 +80,13 @@ export async function GET(
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const usageByDay = await (prisma as any).promotion_usage.groupBy({
+    const usageByDay = await (prisma as any).promotionusage.groupBy({
       by: ['used_at'],
       where: {
         promotion_id: id,
+        tickets_id: {
+          not: 1 // Chỉ đếm những usage đã có ticket_id thực tế (đã thanh toán)
+        },
         used_at: {
           gte: sevenDaysAgo,
         },
@@ -88,10 +106,15 @@ export async function GET(
       discount: item._sum.discount_amount?.toNumber() || 0,
     }));
 
-    // Get top users
-    const topUsersData = await (prisma as any).promotion_usage.groupBy({
+    // Get top users (chỉ tính các usage đã thanh toán)
+    const topUsersData = await (prisma as any).promotionusage.groupBy({
       by: ['account_id'],
-      where: { promotion_id: id },
+      where: { 
+        promotion_id: id,
+        tickets_id: {
+          not: 1 // Chỉ đếm những usage đã có ticket_id thực tế (đã thanh toán)
+        }
+      },
       _count: {
         id: true,
       },
