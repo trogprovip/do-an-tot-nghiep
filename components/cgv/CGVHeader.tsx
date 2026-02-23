@@ -5,14 +5,29 @@ import {
   UserOutlined, ShoppingCartOutlined, MenuOutlined, SearchOutlined,
   GlobalOutlined, VideoCameraOutlined, PlayCircleOutlined, StarOutlined,
   ShopOutlined, PhoneOutlined, GiftOutlined, IdcardOutlined, DownOutlined,
-  LogoutOutlined
+  LogoutOutlined, CloseOutlined
 } from '@ant-design/icons';
 import Link from 'next/link';
 import { authService, User } from '@/lib/services/authService'; // ✅ authService cho User/CGV
 
+interface Movie {
+  id: number;
+  title: string;
+  poster_url?: string | null;
+  status: 'now_showing' | 'coming_soon' | 'ended' | null;
+  release_date?: Date | null;
+  duration?: number | null;
+  genre?: string | null;
+  director?: string | null;
+}
+
 export default function CGVHeader({ hideQuickLinks = false }: { hideQuickLinks?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -30,6 +45,54 @@ export default function CGVHeader({ hideQuickLinks = false }: { hideQuickLinks?:
     setCurrentUser(user);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.search-container')) {
+        setSearchOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSearchOpen(false);
+      }
+    };
+
+    if (searchOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [searchOpen]);
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/movies/search?q=${encodeURIComponent(query.trim())}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data.movies || []);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
       authService.logout(); // ✅ Dùng authService cho User
@@ -41,6 +104,7 @@ export default function CGVHeader({ hideQuickLinks = false }: { hideQuickLinks?:
   const quickLinks = [
     { href: '/cgv/cinemas', icon: <VideoCameraOutlined />, title: 'CGV CINEMAS', sub: 'RẠP CGV' },
     { href: '/cgv/movies?status=now_showing', icon: <PlayCircleOutlined />, title: 'NOW SHOWING', sub: 'PHIM ĐANG CHIẾU' },
+    { href: '/cgv/movies?status=coming_soon', icon: <StarOutlined />, title: 'COMING SOON', sub: 'PHIM SẮP CHIẾU' },
     { href: '/cgv', icon: <PhoneOutlined />, title: 'CONTACT CGV', sub: 'LIÊN HỆ CGV' },
     { href: '/news', icon: <GiftOutlined />, title: 'NEWS & OFFERS', sub: 'TIN MỚI & ƯU ĐÃI' },
     { href: '/auth/login', icon: <IdcardOutlined />, title: 'REGISTER', sub: 'ĐĂNG KÝ NGAY' },
@@ -156,6 +220,89 @@ export default function CGVHeader({ hideQuickLinks = false }: { hideQuickLinks?:
                 </span>
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-red-600 transition-all duration-300 group-hover:w-full"></span>
               </Link>
+
+              {/* SEARCH BAR */}
+              <div className="relative search-container">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm phim..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    onFocus={() => setSearchOpen(true)}
+                    className="w-64 px-4 py-2 pr-10 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  <SearchOutlined className="absolute right-3 top-2.5 text-gray-400 text-base" />
+                </div>
+
+                {/* Search Results Dropdown */}
+                {(searchOpen || searchQuery) && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-96 overflow-y-auto z-50">
+                    {loading ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <div className="animate-spin inline-block w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full"></div>
+                        <span className="ml-2">Đang tìm kiếm...</span>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div>
+                        {searchResults.map((movie) => (
+                          <Link
+                            key={movie.id}
+                            href={`/cgv/movies/${movie.id}`}
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                            onClick={() => {
+                              setSearchOpen(false);
+                              setSearchQuery('');
+                              setSearchResults([]);
+                            }}
+                          >
+                            <div className="w-12 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                              {movie.poster_url ? (
+                                <img src={movie.poster_url} alt={movie.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
+                                  <PlayCircleOutlined className="text-white text-xl" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-gray-900 text-sm truncate">{movie.title}</h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  movie.status === 'now_showing' 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : movie.status === 'coming_soon'
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {movie.status === 'now_showing' ? 'Đang chiếu' : 
+                                   movie.status === 'coming_soon' ? 'Sắp chiếu' : 'Đã chiếu'}
+                                </span>
+                                {movie.duration && (
+                                  <span className="text-xs text-gray-500">{movie.duration} phút</span>
+                                )}
+                              </div>
+                              {movie.genre && (
+                                <p className="text-xs text-gray-500 mt-1 truncate">{movie.genre}</p>
+                              )}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : searchQuery.length >= 2 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <SearchOutlined className="text-2xl text-gray-300 mb-2" />
+                        <p className="text-sm">Không tìm thấy phim nào</p>
+                        <p className="text-xs text-gray-400 mt-1">Thử tìm với từ khóa khác</p>
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-gray-500">
+                        <p className="text-sm">Nhập tối thiểu 2 ký tự để tìm kiếm</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </nav>
 
             {/* NÚT MUA VÉ */}

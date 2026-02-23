@@ -15,10 +15,13 @@ export default function CGVHomePage() {
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
     const orderId = searchParams.get('orderId');
+    const responseCode = searchParams.get('responseCode');
+    const errorMessage = searchParams.get('message');
+    const errorType = searchParams.get('error');
 
     if (paymentStatus === 'success' && orderId) {
       message.success({
-        content: '🎉 Đặt vé thành công! Vé của bạn đã được xác nhận.',
+        content: '🎉 Thanh toán thành công! Vé của bạn đã được xác nhận.',
         duration: 5,
         style: {
           marginTop: '20vh',
@@ -27,6 +30,46 @@ export default function CGVHomePage() {
       });
 
       // Clear URL params sau khi hiển thị thông báo
+      if (window.history.replaceState) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    } else if (paymentStatus === 'failed' && orderId) {
+      message.error({
+        content: `❌ Thanh toán thất bại: ${errorMessage || 'Vui lòng thử lại.'}`,
+        duration: 5,
+        style: {
+          marginTop: '20vh',
+          fontSize: '16px',
+        },
+      });
+
+      // Clear URL params
+      if (window.history.replaceState) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    } else if (paymentStatus === 'error') {
+      let errorMsg = 'Có lỗi xảy ra trong quá trình thanh toán.';
+      
+      if (errorType === 'missing_params') {
+        errorMsg = 'Thiếu thông tin giao dịch.';
+      } else if (errorType === 'invalid_signature') {
+        errorMsg = 'Chữ ký giao dịch không hợp lệ.';
+      } else if (errorType === 'server_error') {
+        errorMsg = 'Lỗi máy chủ, vui lòng thử lại.';
+      }
+
+      message.error({
+        content: `❌ ${errorMsg}`,
+        duration: 5,
+        style: {
+          marginTop: '20vh',
+          fontSize: '16px',
+        },
+      });
+
+      // Clear URL params
       if (window.history.replaceState) {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, '', newUrl);

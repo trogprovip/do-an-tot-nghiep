@@ -28,6 +28,40 @@ async function updateBookingPaymentStatus(bookingId: string, status: string, pay
   }
 }
 
+// Helper function để cập nhật trạng thái ghế khi thanh toán thành công
+async function updateSeatsStatus(bookingId: string, status: 'booked' | 'active') {
+  try {
+    const bookingIdNum = parseInt(bookingId);
+    if (isNaN(bookingIdNum)) {
+      throw new Error('Invalid booking ID');
+    }
+
+    // Lấy danh sách seat_ids từ bookingseats
+    const bookingSeats = await prisma.bookingseats.findMany({
+      where: { tickets_id: bookingIdNum },
+      select: { seat_id: true }
+    });
+
+    if (bookingSeats.length > 0) {
+      // Cập nhật trạng thái tất cả các ghế
+      await prisma.seats.updateMany({
+        where: {
+          id: { in: bookingSeats.map(bs => bs.seat_id) }
+        },
+        data: { status: status as any }
+      });
+
+      // Release seat locks cho cả hai trường hợp (thành công và thất bại)
+      await prisma.$executeRaw`UPDATE seatlocks SET is_active = 0, updated_at = NOW() WHERE seat_id IN (${bookingSeats.map(bs => bs.seat_id).join(',')}) AND is_active = 1`;
+
+      console.log(`✅ Updated ${bookingSeats.length} seats to status: ${status} and released locks`);
+    }
+  } catch (error) {
+    console.error('❌ Error updating seats status:', error);
+    throw error;
+  }
+}
+
 // Helper function để cập nhật voucher usage khi thanh toán thành công
 async function updateVoucherUsage(bookingId: string) {
   try {
@@ -130,7 +164,7 @@ export async function GET(request: NextRequest) {
     if (!query.vnp_TxnRef || !query.vnp_ResponseCode || !query.vnp_SecureHash) {
       console.error('❌ Missing required VNPay response parameters');
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_URL}/payment/failed?error=missing_params&orderId=${query.vnp_TxnRef || 'unknown'}`
+        `${process.env.NEXT_PUBLIC_URL}/cgv?payment=error&error=missing_params&orderId=${query.vnp_TxnRef || 'unknown'}`
       );
     }
 
@@ -143,7 +177,7 @@ export async function GET(request: NextRequest) {
       console.error('❌ Invalid VNPay signature');
       console.error('Query params:', JSON.stringify(query, null, 2));
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_URL}/payment/failed?error=invalid_signature&orderId=${query.vnp_TxnRef}`
+        `${process.env.NEXT_PUBLIC_URL}/cgv?payment=error&error=invalid_signature&orderId=${query.vnp_TxnRef}`
       );
     }
 
@@ -162,7 +196,11 @@ export async function GET(request: NextRequest) {
         await updateBookingPaymentStatus(bookingId, 'confirmed', 'paid');
         console.log(`✅ Updated booking ${bookingId} from pending to confirmed/paid`);
         
-        // 2️⃣ Cập nhật voucher usage khi thanh toán thành công
+        // 2️⃣ Cập nhật trạng thái ghế thành booked khi thanh toán thành công
+        await updateSeatsStatus(bookingId, 'booked');
+        console.log(`✅ Updated seats to booked for booking ${bookingId}`);
+        
+        // 3️⃣ Cập nhật voucher usage khi thanh toán thành công
         await updateVoucherUsage(bookingId);
         console.log(`✅ Updated voucher usage for booking ${bookingId}`);
       } catch (error) {
@@ -181,19 +219,24 @@ export async function GET(request: NextRequest) {
       try {
         await updateBookingPaymentStatus(bookingId, 'cancelled', 'unpaid');
         console.log(`✅ Updated booking ${bookingId} to cancelled/unpaid status`);
+        
+        // 3️⃣ Rollback seat status về active khi payment thất bại
+        await updateSeatsStatus(bookingId, 'active');
+        console.log(`✅ Rolled back seats to active for booking ${bookingId}`);
       } catch (error) {
         console.error(`❌ Failed to update booking ${bookingId}:`, error);
       }
       
+      // Redirect về trang chủ với thông báo thất bại
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_URL}/payment/failed?orderId=${query.vnp_TxnRef}&responseCode=${query.vnp_ResponseCode}&message=${encodeURIComponent(statusMessage)}`
+        `${process.env.NEXT_PUBLIC_URL}/cgv?payment=failed&orderId=${query.vnp_TxnRef}&responseCode=${query.vnp_ResponseCode}&message=${encodeURIComponent(statusMessage)}`
       );
     }
 
   } catch (error) {
     console.error('❌ VNPay return processing error:', error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_URL}/payment/failed?error=server_error`
+      `${process.env.NEXT_PUBLIC_URL}/cgv?payment=error&error=server_error`
     );
   }
 }

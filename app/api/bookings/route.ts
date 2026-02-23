@@ -147,6 +147,27 @@ export async function POST(request: NextRequest) {
 
     // Start transaction
     const result = await prisma.$transaction(async (tx) => {
+      // Update seat status to booked and release locks
+      for (const seatData of selectedSeats) {
+        // Update seat status to booked
+        await tx.seats.update({
+          where: { id: seatData.seat_id },
+          data: { status: 'booked' }
+        });
+
+        // Release seat lock
+        await tx.seatlocks.updateMany({
+          where: { 
+            seat_id: seatData.seat_id,
+            is_active: true
+          },
+          data: { 
+            is_active: false,
+            updated_at: new Date()
+          }
+        });
+      }
+
       // Create ticket
       const ticket = await tx.tickets.create({
         data: {

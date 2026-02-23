@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -111,24 +112,16 @@ export default function BookingPage({ params }: { params: Promise<{ slotId: stri
     return `${hours}:${minutes}, ${day}/${month}/${year}`;
   };
 
-  const toggleSeat = (seatId: number, status: string) => {
+  const toggleSeat = async (seatId: number, status: string) => {
     if (status !== 'active') return;
     
     const seat = seats.find(s => s.id === seatId);
     if (!seat) return;
-    
+
     setSelectedSeats(prev => {
       if (prev.includes(seatId)) {
         return prev.filter(id => id !== seatId);
       } else {
-        // Check if selecting different seat type
-        if (prev.length > 0) {
-          const firstSelectedSeat = seats.find(s => s.id === prev[0]);
-          if (firstSelectedSeat && firstSelectedSeat.seattypes.id !== seat.seattypes.id) {
-            alert(`Vui lòng chọn cùng loại ghế! Bạn đã chọn ghế ${firstSelectedSeat.seattypes.type_name}, không thể chọn ghế ${seat.seattypes.type_name}.`);
-            return prev;
-          }
-        }
         return [...prev, seatId];
       }
     });
@@ -393,12 +386,11 @@ export default function BookingPage({ params }: { params: Promise<{ slotId: stri
               </div>
               {/* Chỉ hiển thị các loại ghế có trong phòng hiện tại */}
               {(() => {
-                const uniqueSeatTypes = [...new Set(seats.map(seat => seat.seattypes.id))];
                 const seatTypeLegends = [
                   { typeId: 'provip', color: 'bg-orange-500', borderColor: 'border-orange-500', name: 'Ghế ProVIP' },
                   { typeId: 'vip', color: 'bg-yellow-500', borderColor: 'border-yellow-500', name: 'Ghế VIP' },
                   { typeId: 'couple', color: 'bg-pink-500', borderColor: 'border-pink-500', name: 'Ghế đôi' },
-                  { typeId: 'standard', color: 'bg-blue-500', borderColor: 'border-blue-500', name: 'Ghế thường' }
+                  { typeId: 'standard', color: 'bg-cyan-500', borderColor: 'border-blue-500', name: 'Ghế thường' }
                 ];
 
                 return seatTypeLegends.map(legend => {
@@ -430,7 +422,8 @@ export default function BookingPage({ params }: { params: Promise<{ slotId: stri
                 });
               })()}
             </div>
-          </>
+
+</>
         )}
 
         {/* Step 2: Product Selection */}

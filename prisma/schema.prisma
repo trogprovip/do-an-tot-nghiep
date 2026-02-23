@@ -276,6 +276,7 @@ enum rooms_status {
 enum seats_status {
   active
   broken
+  booked
 }
 
 enum accounts_role {
@@ -367,4 +368,22 @@ model promotionusage {
 
   @@index([account_id], map: "idx_promotion_usage_account")
   @@index([promotion_id], map: "idx_promotion_usage_promotion")
+}
+
+model seatlocks {
+  id           Int      @id @default(autoincrement()) @db.UnsignedInt
+  seat_id      Int      @db.UnsignedInt
+  user_id      Int?     @db.UnsignedInt
+  session_id   String?  @db.VarChar(255)
+  locked_at    DateTime @default(now()) @db.DateTime(0)
+  expires_at   DateTime @db.DateTime(0)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now()) @db.DateTime(0)
+  updated_at   DateTime @updatedAt @db.DateTime(0)
+
+  @@unique([seat_id], map: "unique_seat_lock")
+  @@index([seat_id], map: "idx_seat_lock_seat")
+  @@index([user_id], map: "idx_seat_lock_user")
+  @@index([session_id], map: "idx_seat_lock_session")
+  @@index([expires_at], map: "idx_seat_lock_expires")
 }

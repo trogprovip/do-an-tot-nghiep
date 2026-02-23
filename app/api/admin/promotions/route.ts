@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         discount_type: body.discount_type,
         discount_value: parseFloat(body.discount_value),
         max_discount_amount: body.max_discount_amount ? parseFloat(body.max_discount_amount) : null,
-        min_order_amount: parseFloat(body.min_order_amount),
+        min_order_amount: Math.round(parseFloat(body.min_order_amount) * 100) / 100,
         usage_limit: body.usage_limit ? parseInt(body.usage_limit) : null,
         usage_per_user: parseInt(body.usage_per_user),
         start_date: new Date(body.start_date),

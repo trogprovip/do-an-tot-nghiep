@@ -52,6 +52,7 @@ export async function GET(
             username: true,
             email: true,
             full_name: true,
+            is_deleted: true,
           },
         },
         tickets: {
@@ -69,6 +70,55 @@ export async function GET(
       take: size,
     });
 
+    // Debug: Log dữ liệu gốc
+    console.log('Original usage data:', usage.map((u: any) => ({
+      id: u.id,
+      account_id: u.account_id,
+      accounts: u.accounts,
+      hasAccounts: !!u.accounts,
+      email: u.accounts?.email
+    })));
+
+    // Nếu không có account information qua relation, thử lấy trực tiếp
+    const usageWithAccountInfo = await Promise.all(
+      usage.map(async (usageItem: any) => {
+        if (!usageItem.accounts) {
+          console.log(`Looking for account with ID: ${usageItem.account_id}`);
+          // Try to get account directly
+          const account = await (prisma as any).accounts.findFirst({
+            where: { 
+              id: usageItem.account_id
+            },
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              full_name: true,
+              is_deleted: true,
+            },
+          });
+          console.log(`Found account:`, account);
+          return {
+            ...usageItem,
+            accounts: account
+          };
+        }
+        return usageItem;
+      })
+    );
+
+    // Debug: Log thông tin account
+    console.log('Usage data with accounts:', usageWithAccountInfo.map((u: any) => ({
+      id: u.id,
+      account_id: u.account_id,
+      account: u.account,
+      hasAccount: !!u.account,
+      email: u.account?.email,
+      emailType: typeof u.account?.email,
+      emailIsNull: u.account?.email === null,
+      emailIsEmpty: u.account?.email === ''
+    })));
+
     // Get total count (đếm TẤT CẢ người đã kích hoạt)
     const totalElements = await (prisma as any).promotionusage.count({
       where: { 
@@ -80,7 +130,7 @@ export async function GET(
     const totalPages = Math.ceil(totalElements / size);
 
     return NextResponse.json({
-      content: usage,
+      content: usageWithAccountInfo,
       page,
       size,
       totalElements,

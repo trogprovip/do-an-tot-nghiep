@@ -51,9 +51,18 @@ export async function GET(request: NextRequest) {
           used_at: usage.used_at,
           expired_at: promotion.end_date,
           discount_amount: usage.discount_amount,
+          min_order_amount: promotion.min_order_amount,
+          max_discount_amount: promotion.max_discount_amount,
         };
       })
     );
+
+    // Debug: Log min_order_amount values
+    vouchers.forEach((voucher, index) => {
+      if (voucher) {
+        console.log(`Voucher ${index + 1} (${voucher.code}): min_order_amount =`, voucher.min_order_amount);
+      }
+    });
 
     // Filter out null values
     const validVouchers = vouchers.filter(v => v !== null);
@@ -243,6 +252,8 @@ export async function POST(request: NextRequest) {
         discount_value: promotion.discount_value,
         code: promotion.promotion_code,
         used_at: usage.used_at,
+        min_order_amount: promotion.min_order_amount,
+        max_discount_amount: promotion.max_discount_amount,
       },
       message: 'Voucher đã được kích hoạt thành công',
     });

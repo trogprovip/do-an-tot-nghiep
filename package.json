@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "update-used-tickets": "node scripts/update-used-tickets.js",
-    "cleanup-expired-vouchers": "node scripts/cleanup-expired-vouchers.js"
+    "cleanup-expired-vouchers": "node scripts/cleanup-expired-vouchers.js",
+    "cleanup-seat-locks": "node scripts/cleanup-seat-locks.js"
   },
   "prisma": {
     "seed": "ts-node --compilerOptions {\"module\":\"CommonJS\"} prisma/seed-admin.ts"

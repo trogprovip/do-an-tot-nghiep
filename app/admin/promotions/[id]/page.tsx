@@ -35,7 +35,7 @@ interface PromotionUsage {
   tickets_id: number;
   discount_amount: number;
   used_at: string;
-  account?: {
+  accounts?: {
     id: number;
     username: string;
     email: string;
@@ -106,6 +106,10 @@ export default function PromotionDetailPage({ params }: { params: Promise<{ id: 
 
       if (usageRes.ok) {
         const usageData = await usageRes.json();
+        console.log('Usage data from API:', usageData);
+        console.log('First usage item:', usageData.content?.[0]);
+        console.log('First usage accounts:', usageData.content?.[0]?.accounts);
+        console.log('First usage email:', usageData.content?.[0]?.accounts?.email);
         setUsage(usageData.content || []);
       }
     } catch (error) {
@@ -372,7 +376,7 @@ export default function PromotionDetailPage({ params }: { params: Promise<{ id: 
                         {item.account_id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.account?.email || 'N/A'}
+                        {item.accounts?.email || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(item.used_at)}

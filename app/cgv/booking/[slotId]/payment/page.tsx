@@ -56,6 +56,9 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
   const [userVouchers, setUserVouchers] = useState<any[]>([]);
   const [showVoucherModal, setShowVoucherModal] = useState<boolean>(false);
   const [loadingVouchers, setLoadingVouchers] = useState<boolean>(false);
+  const [sessionId] = useState(() => `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [seatLockError, setSeatLockError] = useState<string | null>(null);
+  const [isLockingSeats, setIsLockingSeats] = useState(false);
 
   const loadData = (id: string) => {
     const booking = sessionStorage.getItem(`booking_${id}`);
@@ -75,6 +78,7 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
     // Clear session storage
     sessionStorage.removeItem(`booking_${slotId}`);
     sessionStorage.removeItem(`combo_${slotId}`);
+    sessionStorage.removeItem(`payment_timer_${slotId}`);
     // Ta không auto redirect ngay để người dùng thấy thông báo lỗi rõ ràng hơn
   }, [slotId]);
 
@@ -84,6 +88,31 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
       loadData(p.slotId);
     });
   }, [params]);
+
+  // Initialize countdown from sessionStorage or set new timer
+  useEffect(() => {
+    if (!slotId) return;
+    
+    const storageKey = `payment_timer_${slotId}`;
+    const storedStartTime = sessionStorage.getItem(storageKey);
+    const now = Date.now();
+    const FIVE_MINUTES = 5 * 60 * 1000; // 5 minutes in milliseconds
+    
+    if (storedStartTime) {
+      // Calculate remaining time based on stored start time
+      const elapsed = now - parseInt(storedStartTime);
+      const remaining = Math.max(0, Math.floor((FIVE_MINUTES - elapsed) / 1000));
+      setCountdown(remaining);
+      
+      if (remaining === 0) {
+        setIsExpired(true);
+      }
+    } else {
+      // First time loading, store current time
+      sessionStorage.setItem(storageKey, now.toString());
+      setCountdown(300);
+    }
+  }, [slotId]);
 
   useEffect(() => {
     if (countdown > 0 && !isExpired) {
@@ -111,7 +140,12 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
     // Apply voucher discount if available
     if (appliedVoucher) {
       if (appliedVoucher.discount_type === 'percentage') {
-        return baseTotal * (1 - appliedVoucher.discount_value / 100);
+        const discountAmount = baseTotal * (appliedVoucher.discount_value / 100);
+        // Apply max discount limit if exists
+        const actualDiscount = appliedVoucher.max_discount_amount 
+          ? Math.min(discountAmount, appliedVoucher.max_discount_amount)
+          : discountAmount;
+        return baseTotal - actualDiscount;
       } else if (appliedVoucher.discount_type === 'fixed_amount') {
         return Math.max(0, baseTotal - appliedVoucher.discount_value);
       }
@@ -127,7 +161,11 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
     
     if (appliedVoucher) {
       if (appliedVoucher.discount_type === 'percentage') {
-        return baseTotal * (appliedVoucher.discount_value / 100);
+        const discountAmount = baseTotal * (appliedVoucher.discount_value / 100);
+        // Apply max discount limit if exists
+        return appliedVoucher.max_discount_amount 
+          ? Math.min(discountAmount, appliedVoucher.max_discount_amount)
+          : discountAmount;
       } else if (appliedVoucher.discount_type === 'fixed_amount') {
         return Math.min(baseTotal, appliedVoucher.discount_value);
       }
@@ -175,6 +213,17 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
 
   // Handle selecting voucher from modal
   const handleSelectVoucher = (voucher: any) => {
+    // Kiểm tra điều kiện đơn hàng tối thiểu
+    const seatTotal = bookingData?.totalPrice || 0;
+    const comboTotal = comboData?.comboTotal || 0;
+    const baseTotal = seatTotal + comboTotal;
+    
+    // Kiểm tra nếu có đơn hàng tối thiểu và tổng tiền nhỏ hơn tối thiểu
+    if (voucher.min_order_amount && baseTotal < voucher.min_order_amount) {
+      message.error(`Voucher này yêu cầu đơn hàng tối thiểu ${voucher.min_order_amount.toLocaleString('vi-VN')}đ. Hiện tại đơn hàng của bạn là ${baseTotal.toLocaleString('vi-VN')}đ.`);
+      return;
+    }
+    
     setAppliedVoucher(voucher);
     setShowVoucherModal(false);
     message.success(`Áp dụng voucher thành công! Giảm ${voucher.discount_value}${voucher.discount_type === 'percentage' ? '%' : 'đ'}`);
@@ -186,6 +235,87 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
       fetchUserVouchers();
     }
   }, [slotId]);
+
+  // Function to lock seats when entering payment page
+  const lockSeatsForPayment = async () => {
+    if (!bookingData?.selectedSeats || bookingData.selectedSeats.length === 0) {
+      return;
+    }
+
+    setIsLockingSeats(true);
+    setSeatLockError(null);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      let userId = null;
+      
+      // Try to get user ID from token
+      if (token) {
+        try {
+          const decoded = JSON.parse(atob(token.split('.')[1]));
+          userId = decoded.id;
+        } catch (error) {
+          console.log('Could not decode token for user ID');
+        }
+      }
+
+      const response = await fetch('/api/seat-locks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          seatIds: bookingData.selectedSeats,
+          userId: userId,
+          sessionId: sessionId
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        // Handle locking errors
+        const errorMessages = data.data?.errors?.map((error: any) => error.message) || [data.message || 'Lỗi khi giữ ghế'];
+        setSeatLockError(errorMessages.join(', '));
+        
+        // If seats are locked by someone else, redirect back
+        if (errorMessages.some((msg: string) => msg.includes('người khác giữ'))) {
+          setTimeout(() => {
+            router.back();
+          }, 3000);
+        }
+      }
+    } catch (error) {
+      console.error('Error locking seats for payment:', error);
+      setSeatLockError('Lỗi khi giữ ghế, vui lòng thử lại!');
+    } finally {
+      setIsLockingSeats(false);
+    }
+  };
+
+  // Lock seats when booking data is loaded
+  useEffect(() => {
+    if (bookingData && bookingData.selectedSeats && bookingData.selectedSeats.length > 0) {
+      lockSeatsForPayment();
+    }
+  }, [bookingData]);
+
+  // Cleanup seat locks when leaving page
+  useEffect(() => {
+    return () => {
+      // Unlock seats when component unmounts
+      if (bookingData?.selectedSeats && bookingData.selectedSeats.length > 0) {
+        fetch('/api/seat-locks', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            seatIds: bookingData.selectedSeats,
+            sessionId: sessionId
+          })
+        }).catch(error => {
+          console.error('Error unlocking seats on cleanup:', error);
+        });
+      }
+    };
+  }, [bookingData, sessionId]);
 
   const handlePayment = async () => {
     try {
@@ -204,11 +334,20 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
         const totalAmount = getTotalAmount();
 
         try {
-          // 1️⃣ Tạo booking với status pending trước
+          console.log('🔍 Creating booking with data:', {
+            slotId,
+            selectedSeats: bookingData?.selectedSeats,
+            combos: comboData?.combos,
+            totalAmount: getTotalAmount()
+          });
+          
           const bookingResponse = await createPendingBooking();
           
+          console.log('🔍 Booking response:', bookingResponse);
+          
           if (!bookingResponse.success) {
-            alert('Không thể tạo đơn hàng, vui lòng thử lại');
+            console.error('❌ Booking creation failed:', bookingResponse.error);
+            alert(`Không thể tạo đơn hàng: ${bookingResponse.error || 'Lỗi không xác định'}`);
             return;
           }
 
@@ -456,7 +595,7 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
         {isExpired ? (
           <div className="max-w-2xl mx-auto py-20 text-center">
             <Alert
-              message="Hết thời gian thanh toán"
+              title="Hết thời gian thanh toán"
               description="Phiên giao dịch của bạn đã hết hạn sau 5 phút. Vui lòng quay lại trang chọn ghế."
               type="error"
               showIcon
@@ -466,93 +605,89 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
               Về trang chủ
             </Button>
           </div>
+        ) : isLockingSeats ? (
+          <div className="max-w-2xl mx-auto py-20 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 text-lg">Đang giữ ghế của bạn...</p>
+            <p className="text-gray-500 text-sm">Vui lòng đợi trong giây lát</p>
+          </div>
+        ) : seatLockError ? (
+          <div className="max-w-2xl mx-auto py-20 text-center">
+            <Alert
+              title="Không thể giữ ghế"
+              description={seatLockError}
+              type="error"
+              showIcon
+              className="mb-6 py-4 shadow-lg"
+            />
+            <div className="space-x-4">
+              <Button type="primary" size="large" onClick={() => window.location.reload()}>
+                Thử lại
+              </Button>
+              <Button size="large" onClick={() => router.back()}>
+                Quay lại
+              </Button>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Cột trái: Thanh toán VNPay (8 cols) */}
             <div className="lg:col-span-8">
-              <section className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-gray-100">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-xl flex items-center justify-center font-bold shadow-md">
-                    <QrcodeOutlined className="text-xl" />
+              <section className="bg-white p-8 rounded-3xl shadow-xl border-2 border-blue-500">
+                {/* VNPay Header */}
+                <div className="flex flex-col items-center mb-8">
+                  <div className="relative mb-4">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <span className="text-white font-black text-4xl">V</span>
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <CheckCircleFilled className="text-white text-xs" />
+                    </div>
                   </div>
-                  <div>
-                    <Title level={3} className="!m-0 !mb-1">Thanh Toán VNPay</Title>
-                    <Text type="secondary" className="text-sm">An toàn - Nhanh chóng - Tiện lợi</Text>
+                  <Title level={4} className="!m-0 text-gray-800">VNPay - Cổng Thanh Toán Quốc Gia</Title>
+                </div>
+
+                {/* Amount */}
+                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 text-center mb-6">
+                  <Text className="text-gray-600 block mb-2">Số tiền thanh toán</Text>
+                  <Text className="text-4xl font-black text-red-600">
+                    {getTotalAmount().toLocaleString('vi-VN')}đ
+                  </Text>
+                </div>
+
+                {/* Payment Methods */}
+                <div className="flex justify-center gap-6 mb-8">
+                  <div className="text-center">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mb-1">
+                      <span className="text-blue-600 text-xs font-bold">ATM</span>
+                    </div>
+                    <span className="text-xs text-gray-500">Nội địa</span>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-1">
+                      <span className="text-purple-600 text-xs font-bold">Ví</span>
+                    </div>
+                    <span className="text-xs text-gray-500">Điện tử</span>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mb-1">
+                      <span className="text-green-600 text-xs font-bold">QR</span>
+                    </div>
+                    <span className="text-xs text-gray-500">Quét mã</span>
                   </div>
                 </div>
 
-                <div className="max-w-2xl mx-auto">
-                  {/* VNPay Logo & Info */}
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-2xl mb-6 border-2 border-blue-200">
-                    <div className="flex items-center justify-center mb-6">
-                      <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-xl">
-                        <span className="text-white font-black text-3xl">V</span>
-                      </div>
-                    </div>
-                    
-                    <Title level={3} className="!text-blue-900 !m-0 mb-6 text-center font-bold">VNPay - Cổng Thanh Toán Quốc Gia</Title>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="bg-white p-4 rounded-xl text-center shadow-sm">
-                        <CheckCircleFilled className="text-green-600 text-2xl mb-2" />
-                        <Text strong className="block text-sm">An toàn & Bảo mật</Text>
-                        <Text className="text-xs text-gray-500">Mã hóa 256-bit</Text>
-                      </div>
-                      <div className="bg-white p-4 rounded-xl text-center shadow-sm">
-                        <CheckCircleFilled className="text-green-600 text-2xl mb-2" />
-                        <Text strong className="block text-sm">Đa dạng ngân hàng</Text>
-                        <Text className="text-xs text-gray-500">50+ ngân hàng</Text>
-                      </div>
-                      <div className="bg-white p-4 rounded-xl text-center shadow-sm">
-                        <CheckCircleFilled className="text-green-600 text-2xl mb-2" />
-                        <Text strong className="block text-sm">Xác nhận tức thì</Text>
-                        <Text className="text-xs text-gray-500">Thanh toán nhanh</Text>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-5 rounded-xl shadow-sm">
-                      <div className="flex justify-between items-center mb-2">
-                        <Text className="text-gray-600 font-medium">Số tiền thanh toán:</Text>
-                        <Text className="text-3xl font-black text-red-600">
-                          {getTotalAmount().toLocaleString('vi-VN')}đ
-                        </Text>
-                      </div>
-                      <Divider className="my-3" />
-                      <div className="space-y-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          <span>Hỗ trợ: ATM nội địa, Visa, Mastercard, JCB</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          <span>Ví điện tử: MoMo, ZaloPay, ShopeePay</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          <span>Quét mã QR thanh toán nhanh</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Button */}
-                  <Button 
-                    type="primary" 
-                    size="large"
-                    block
-                    className="h-16 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border-none text-xl font-bold shadow-xl uppercase transition-all duration-300 hover:shadow-2xl"
-                    onClick={handlePayment}
-                    icon={<QrcodeOutlined className="text-2xl" />}
-                  >
-                    Thanh toán qua VNPay
-                  </Button>
-                  
-                  <div className="mt-4 text-center">
-                    <Text className="text-xs text-gray-500">
-                      Bạn sẽ được chuyển đến cổng thanh toán VNPay để hoàn tất giao dịch
-                    </Text>
-                  </div>
-                </div>
+                {/* Payment Button */}
+                <Button 
+                  type="primary" 
+                  size="large"
+                  block
+                  className="h-14 rounded-xl bg-blue-600 hover:bg-blue-700 border-none text-lg font-bold shadow-lg"
+                  onClick={handlePayment}
+                  icon={<QrcodeOutlined />}
+                >
+                  Thanh toán ngay
+                </Button>
               </section>
             </div>
 
@@ -652,6 +787,11 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
                                 <Text className="text-xs text-green-700 font-medium">
                                   Giảm {appliedVoucher.discount_value}{appliedVoucher.discount_type === 'percentage' ? '%' : 'đ'}
                                 </Text>
+                                {appliedVoucher.discount_type === 'percentage' && appliedVoucher.max_discount_amount && (
+                                  <Text className="text-xs text-orange-600 font-medium block mt-1">
+                                    Tối đa {appliedVoucher.max_discount_amount.toLocaleString('vi-VN')}đ
+                                  </Text>
+                                )}
                               </div>
                             </div>
                             <button
@@ -856,4 +996,4 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
       `}</style>
     </div>
   );
-}
+};
