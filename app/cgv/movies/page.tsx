@@ -16,6 +16,7 @@ import { movieService, Movie } from '@/lib/services/movieService';
 import { authService, User } from '@/lib/services/authService';
 import CGVHeader from '@/components/cgv/CGVHeader';
 import CGVFooter from '@/components/cgv/CGVFooter';
+import MovieStatusBadge from '@/components/cgv/MovieStatusBadge';
 
 export default function AllMoviesPage() {
   const searchParams = useSearchParams();
@@ -61,11 +62,40 @@ export default function AllMoviesPage() {
   const fetchMovies = async () => {
     try {
       setLoading(true);
-      const response = await movieService.getMovies({
-        page: currentPage,
-        size: pageSize,
-        status: status === 'all' ? undefined : status,
-      });
+      let response;
+      
+      if (status === 'all') {
+        // Fetch both now_showing and coming_soon movies for 'all' status
+        const [nowShowingResponse, comingSoonResponse] = await Promise.all([
+          movieService.getMovies({
+            page: currentPage,
+            size: Math.ceil(pageSize / 2), // Split page size between two types
+            status: 'now_showing',
+          }),
+          movieService.getMovies({
+            page: currentPage,
+            size: Math.ceil(pageSize / 2),
+            status: 'coming_soon',
+          })
+        ]);
+        
+        // Combine the results
+        response = {
+          content: [...nowShowingResponse.content, ...comingSoonResponse.content],
+          totalElements: nowShowingResponse.totalElements + comingSoonResponse.totalElements,
+          totalPages: Math.max(nowShowingResponse.totalPages, comingSoonResponse.totalPages),
+          size: pageSize,
+          number: currentPage
+        };
+      } else {
+        // Fetch specific status (now_showing or coming_soon)
+        response = await movieService.getMovies({
+          page: currentPage,
+          size: pageSize,
+          status: status,
+        });
+      }
+      
       setMovies(response.content);
       setTotalPages(response.totalPages);
       setTotalElements(response.totalElements);
@@ -378,6 +408,10 @@ export default function AllMoviesPage() {
                     >
                       {/* Poster Area */}
                       <div className="relative aspect-[2/3] overflow-hidden cursor-pointer">
+                        
+                        {/* Movie Status Badge */}
+                        <MovieStatusBadge status={movie.status} />
+
                         {/* Badge Rating */}
 
                         {/* Image */}

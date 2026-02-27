@@ -18,7 +18,8 @@ import {
   Tag,
   Armchair,
   Sofa,
-  Star
+  Star,
+  QrCode
 } from 'lucide-react';
 import { DollarCircleOutlined } from '@ant-design/icons';
 // Phân nhóm menu để sidebar cân đối hơn

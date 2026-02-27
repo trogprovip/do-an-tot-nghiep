@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import CGVHeader from '@/components/cgv/CGVHeader';
 import CGVFooter from '@/components/cgv/CGVFooter';
-import { authService } from '@/lib/services/authService';
 import { MailOutlined, ArrowLeftOutlined, CheckCircleFilled, RedoOutlined } from '@ant-design/icons';
 
 export default function ForgotPasswordPage() {
@@ -26,9 +25,21 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const response = await authService.forgotPassword(email);
-      if (response.success) {
-        setSuccess(true);
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Chuyển đến trang nhập mã xác thực
+        window.location.href = `/auth/verify-code?email=${encodeURIComponent(email)}`;
+      } else {
+        alert(data.message || 'Có lỗi xảy ra. Vui lòng thử lại!');
       }
     } catch (error) {
       alert('Có lỗi xảy ra. Vui lòng thử lại!');

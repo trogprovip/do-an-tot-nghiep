@@ -144,7 +144,40 @@ export default function ProfilePage() {
     message: string;
   }>({ type: "", message: "" });
 
-  // Helper function to get cookie
+  // QR Code states
+  const [qrCodeData, setQrCodeData] = useState<{ qrCode: string; ticketData: unknown } | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState("");
+
+  // Fetch QR code when selected booking changes
+  useEffect(() => {
+    if (selectedBooking?.id) {
+      fetchQRCode(selectedBooking.id);
+    } else {
+      setQrCodeData(null);
+      setQrError("");
+    }
+  }, [selectedBooking]);
+
+  const fetchQRCode = async (ticketId: number) => {
+    setQrLoading(true);
+    setQrError("");
+    try {
+      const response = await fetch(`/api/booking/qr/${ticketId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setQrCodeData(result);
+      } else {
+        setQrError(result.error || "Không thể tải QR code");
+      }
+    } catch (error) {
+      console.error("Error fetching QR code:", error);
+      setQrError("Có lỗi xảy ra khi tải QR code");
+    } finally {
+      setQrLoading(false);
+    }
+  };
   const getCookie = (name: string) => {
     if (typeof document === "undefined") return null;
     const value = `; ${document.cookie}`;
@@ -1088,6 +1121,54 @@ export default function ProfilePage() {
                       ).toLocaleDateString("vi-VN")}
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* QR Code Section */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                <h3 className="text-lg font-semibold text-green-900 mb-3 flex items-center gap-2">
+                  <QrcodeOutlined />
+                  Mã QR Check-in Tại Rạp
+                </h3>
+                <div className="flex flex-col items-center">
+                  {qrLoading ? (
+                    <div className="py-8">
+                      <Spin size="default" />
+                      <p className="text-sm text-gray-500 mt-2">Đang tải mã QR...</p>
+                    </div>
+                  ) : qrError ? (
+                    <div className="text-center py-4">
+                      <p className="text-red-500 text-sm">{qrError}</p>
+                      <button
+                        onClick={() => fetchQRCode(selectedBooking.id)}
+                        className="mt-2 text-sm text-green-600 hover:text-green-700 underline"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  ) : qrCodeData ? (
+                    <div className="text-center">
+                      <div className="bg-white p-4 rounded-xl shadow-lg border-2 border-green-200 mb-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={qrCodeData.qrCode}
+                          alt="QR Code Vé"
+                          className="w-48 h-48 object-contain"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Đưa mã QR này cho nhân viên rạp để check-in
+                      </p>
+                      <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs">
+                        <CheckCircleFilled />
+                        Mã QR có hiệu lực vĩnh viễn
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 py-4">
+                      Không có mã QR cho vé này
+                    </p>
+                  )}
                 </div>
               </div>
 

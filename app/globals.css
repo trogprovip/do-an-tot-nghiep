@@ -19,6 +19,45 @@
   }
 }
 
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+/* Smooth scrolling */
+.scrollbar-hide {
+  scroll-behavior: smooth;
+}
+
+/* Show scrollbar on hover for better UX */
+.scrollbar-hide:hover {
+  scrollbar-width: thin;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar-thumb {
+  background: #dc2626;
+  border-radius: 10px;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar-thumb:hover {
+  background: #b91c1c;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

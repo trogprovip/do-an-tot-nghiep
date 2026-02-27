@@ -60,6 +60,10 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
   const [seatLockError, setSeatLockError] = useState<string | null>(null);
   const [isLockingSeats, setIsLockingSeats] = useState(false);
 
+  const getTimerKey = useCallback(() => {
+    return `payment_timer_${slotId}_${sessionId}`;
+  }, [slotId, sessionId]);
+
   const loadData = (id: string) => {
     const booking = sessionStorage.getItem(`booking_${id}`);
     const combo = sessionStorage.getItem(`combo_${id}`);
@@ -75,12 +79,11 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
 
   const handleTimeout = useCallback(() => {
     setIsExpired(true);
-    // Clear session storage
+    // Clear session storage using unique timer key
     sessionStorage.removeItem(`booking_${slotId}`);
     sessionStorage.removeItem(`combo_${slotId}`);
-    sessionStorage.removeItem(`payment_timer_${slotId}`);
-    // Ta không auto redirect ngay để người dùng thấy thông báo lỗi rõ ràng hơn
-  }, [slotId]);
+    sessionStorage.removeItem(getTimerKey());
+  }, [slotId, getTimerKey]);
 
   useEffect(() => {
     params.then(p => {
@@ -91,9 +94,9 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
 
   // Initialize countdown from sessionStorage or set new timer
   useEffect(() => {
-    if (!slotId) return;
+    if (!slotId || !sessionId) return;
     
-    const storageKey = `payment_timer_${slotId}`;
+    const storageKey = getTimerKey();
     const storedStartTime = sessionStorage.getItem(storageKey);
     const now = Date.now();
     const FIVE_MINUTES = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -112,7 +115,7 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
       sessionStorage.setItem(storageKey, now.toString());
       setCountdown(300);
     }
-  }, [slotId]);
+  }, [slotId, sessionId, getTimerKey]);
 
   useEffect(() => {
     if (countdown > 0 && !isExpired) {

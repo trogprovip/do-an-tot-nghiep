@@ -75,6 +75,11 @@ export default function BookingPage({ params }: { params: Promise<{ slotId: stri
 
   useEffect(() => {
     if (slotId) {
+      // Clear any old session data when starting a new booking
+      sessionStorage.removeItem(`booking_${slotId}`);
+      sessionStorage.removeItem(`combo_${slotId}`);
+      sessionStorage.removeItem(`payment_timer_${slotId}`);
+      
       fetchBookingData();
       fetchProducts();
     }
@@ -89,10 +94,17 @@ export default function BookingPage({ params }: { params: Promise<{ slotId: stri
       const slotData = await slotRes.json();
       setSlot(slotData);
 
-      // Fetch seats for this room
-      const seatsRes = await fetch(`/api/seats?room_id=${slotData.rooms.id}`);
+      // Fetch seats for this room with slot_id to get correct booked status
+      const seatsUrl = `/api/seats?room_id=${slotData.rooms.id}&slot_id=${slotId}&_t=${Date.now()}`;
+      console.log('🔍 [Frontend] Calling seats API:', seatsUrl);
+      const seatsRes = await fetch(seatsUrl);
       const seatsData = await seatsRes.json();
-      console.log('🔍 Seats API response:', seatsData);
+      console.log('🔍 [Frontend] Seats API response:', seatsData);
+      
+      // Log seat statuses
+      const bookedSeats = seatsData.content?.filter((s: Seat) => s.status === 'booked');
+      console.log('🔍 [Frontend] Booked seats count:', bookedSeats?.length);
+      console.log('🔍 [Frontend] Booked seat IDs:', bookedSeats?.map((s: Seat) => s.id));
       console.log('🔍 Seats content:', seatsData.content);
       setSeats(seatsData.content || []);
     } catch (error) {

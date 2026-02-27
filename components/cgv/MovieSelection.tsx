@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Badge, Spin, Empty } from "antd";
 import {
   PlayCircleFilled,
@@ -10,10 +10,12 @@ import {
   RightOutlined,
   HeartOutlined,
   HeartFilled,
+  LeftOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
 import { movieService, Movie } from "@/lib/services/movieService";
 import { authService, User } from "@/lib/services/authService";
+import MovieStatusBadge from "./MovieStatusBadge";
 
 export default function MovieSelection() {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -21,21 +23,69 @@ export default function MovieSelection() {
   const [error, setError] = useState<string | null>(null);
   const [userFavorites, setUserFavorites] = useState<Set<number>>(new Set());
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Check scroll position and update button states
+  const checkScrollPosition = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  // Smooth scroll functions
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = scrollContainerRef.current.offsetWidth * 0.8; // Scroll 80% of visible width
+      scrollContainerRef.current.scrollBy({
+        left: -scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = scrollContainerRef.current.offsetWidth * 0.8; // Scroll 80% of visible width
+      scrollContainerRef.current.scrollBy({
+        left: scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   useEffect(() => {
     const user = authService.getCurrentUser();
     setCurrentUser(user);
   }, []);
 
+  // Add scroll event listener
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScrollPosition);
+      checkScrollPosition(); // Initial check
+      
+      return () => {
+        container.removeEventListener('scroll', checkScrollPosition);
+      };
+    }
+  }, [movies]); // Re-check when movies change
+
   useEffect(() => {
     const fetchMovies = async () => {
       try {
         setLoading(true);
+        // Only fetch now_showing movies for "PHIM ĐANG CHIẾU" section
         const response = await movieService.getMovies({
           status: "now_showing",
           page: 0,
-          size: 8,
+          size: 8, // Get 8 now showing movies
         });
+        
         setMovies(response.content);
       } catch (err) {
         console.error("Error fetching movies:", err);
@@ -55,11 +105,13 @@ export default function MovieSelection() {
       fetchUserFavorites();
       // Refresh movies to get updated favorite counts
       try {
+        // Only fetch now_showing movies for "PHIM ĐANG CHIẾU" section
         const response = await movieService.getMovies({
           status: "now_showing",
           page: 0,
           size: 8,
         });
+        
         setMovies(response.content);
       } catch (err) {
         console.error("Error refreshing movies:", err);
@@ -251,16 +303,48 @@ export default function MovieSelection() {
 
         {/* Movies Grid */}
         {!loading && !error && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-12">
-            {movies.map((movie) => {
-              const rating = getMovieRating(movie);
-              return (
-                <div
-                  key={movie.id}
-                  className="group relative bg-white rounded-xl sm:rounded-2xl overflow-hidden border border-gray-100 sm:border-2 hover:border-red-500 transition-all duration-300 shadow-sm sm:shadow-md hover:shadow-lg sm:hover:shadow-xl hover:shadow-red-200/50 hover:-translate-y-1 sm:hover:-translate-y-2"
-                >
+          <div className="mb-12 relative">
+            {/* Left Scroll Button */}
+            {canScrollLeft && (
+              <button
+                onClick={scrollLeft}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 hover:scale-110 flex items-center justify-center -ml-5 sm:-ml-6"
+                aria-label="Scroll left"
+              >
+                <LeftOutlined className="text-sm sm:text-base" />
+              </button>
+            )}
+
+            {/* Right Scroll Button */}
+            {canScrollRight && (
+              <button
+                onClick={scrollRight}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 hover:scale-110 flex items-center justify-center -mr-5 sm:-mr-6"
+                aria-label="Scroll right"
+              >
+                <RightOutlined className="text-sm sm:text-base" />
+              </button>
+            )}
+
+            {/* Horizontal scroll container */}
+            <div 
+              ref={scrollContainerRef}
+              className="overflow-x-auto scrollbar-hide"
+            >
+              <div className="flex gap-3 sm:gap-4 lg:gap-6 pb-4" style={{ minWidth: 'max-content' }}>
+                {movies.map((movie) => {
+                  const rating = getMovieRating(movie);
+                  return (
+                    <div
+                      key={movie.id}
+                      className="group relative bg-white rounded-xl sm:rounded-2xl overflow-hidden border border-gray-100 sm:border-2 hover:border-red-500 transition-all duration-300 shadow-sm sm:shadow-md hover:shadow-lg sm:hover:shadow-xl hover:shadow-red-200/50 hover:-translate-y-1 sm:hover:-translate-y-2 flex-shrink-0"
+                      style={{ width: 'calc((100vw - 2rem - 3 * 24px) / 4)', maxWidth: '300px' }}
+                    >
                   {/* Poster Area */}
                   <div className="relative aspect-[2/3] overflow-hidden cursor-pointer">
+                    
+                    {/* Movie Status Badge */}
+                    <MovieStatusBadge status={movie.status} />
 
                     {/* Image with Zoom Effect */}
                     {movie.poster_url ? (
@@ -417,7 +501,9 @@ export default function MovieSelection() {
                 </div>
               );
             })}
+            </div>
           </div>
+        </div>
         )}
 
         {/* View All Button - Màu đỏ rực */}
