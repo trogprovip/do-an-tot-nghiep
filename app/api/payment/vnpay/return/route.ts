@@ -2,6 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { VNPayService, VNPayReturnData } from '@/lib/vnpay';
 import { PrismaClient } from '@prisma/client';
+import EmailService, { BookingEmailData } from '@/lib/email';
+import QRCode from 'qrcode';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { existsSync, statSync } from 'fs';
 
 const prisma = new PrismaClient();
 
@@ -148,6 +153,140 @@ async function updateVoucherUsage(bookingId: string) {
   }
 }
 
+// Helper function để gửi email xác nhận đặt vé thành công
+async function sendBookingConfirmationEmail(bookingId: string) {
+  try {
+    const bookingIdNum = parseInt(bookingId);
+    if (isNaN(bookingIdNum)) {
+      throw new Error('Invalid booking ID');
+    }
+
+    // Lấy thông tin ticket với các relations cần thiết
+    const ticket = await prisma.tickets.findUnique({
+      where: { id: bookingIdNum },
+      include: {
+        accounts: {
+          select: {
+            full_name: true,
+            email: true
+          }
+        },
+        slots: {
+          include: {
+            movies: {
+              select: {
+                title: true
+              }
+            },
+            rooms: {
+              include: {
+                cinemas: {
+                  select: {
+                    cinema_name: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        bookingseats: {
+          include: {
+            seats: {
+              include: {
+                seattypes: {
+                  select: {
+                    type_name: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!ticket) {
+      console.error(`❌ Ticket not found for booking ${bookingId}`);
+      return false;
+    }
+
+    if (!ticket.accounts?.email) {
+      console.error(`❌ Customer email not found for booking ${bookingId}`);
+      return false;
+    }
+
+    // Tạo QR code cho vé (giống hệt QR code trong lịch sử)
+    let qrCodeBuffer = undefined;
+    try {
+      // Tạo QR code giống hệt trong lịch sử đặt vé
+      // Dùng cùng URL và options với API /api/booking/qr/[id]
+      const baseUrl = 'http://192.168.1.100:3000'; // Cùng IP với API QR
+      const qrUrl = `${baseUrl}/verify?id=${bookingIdNum}`; // Cùng URL với API QR
+      
+      console.log(`🔄 Creating QR code for booking ${bookingId} with SAME URL as history: ${qrUrl}`);
+      
+      // Tạo QR code với options giống hệt API QR (toDataURL -> toBuffer)
+      const qrCodeDataURL = await QRCode.toDataURL(qrUrl, {
+        width: 300, // Cùng width
+        margin: 2,  // Cùng margin
+        color: {
+          dark: '#000000', // Cùng màu
+          light: '#FFFFFF'
+        }
+      });
+      
+      // Convert Data URL to Buffer để attach vào email
+      const base64Data = qrCodeDataURL.replace(/^data:image\/png;base64,/, '');
+      qrCodeBuffer = Buffer.from(base64Data, 'base64');
+      
+      console.log(`✅ Generated QR code buffer for booking ${bookingId}, size: ${qrCodeBuffer.length} bytes`);
+      console.log(`📱 QR code URL (same as history): ${qrUrl}`);
+      console.log(`🔗 QR code will be identical to history QR code`);
+      
+    } catch (qrError) {
+      console.warn(`⚠️ Error generating QR code for booking ${bookingId}:`, qrError);
+    }
+
+    // Chuẩn bị dữ liệu cho email
+    const emailData: BookingEmailData = {
+      bookingId: bookingId,
+      ticketsCode: ticket.tickets_code,
+      movieTitle: ticket.slots.movies.title,
+      cinemaName: ticket.slots.rooms?.cinemas?.cinema_name || 'N/A',
+      showTime: ticket.slots.show_time,
+      seats: ticket.bookingseats.map(bs => ({
+        row: bs.seats.seat_row,
+        number: bs.seats.seat_number,
+        type: bs.seats.seattypes.type_name,
+        price: Number(bs.seat_price)
+      })),
+      totalAmount: Number(ticket.total_amount),
+      discountAmount: Number(ticket.discount_amount || 0),
+      finalAmount: Number(ticket.final_amount),
+      customerName: ticket.accounts.full_name,
+      customerEmail: ticket.accounts.email,
+      qrCodeUrl: undefined, // QR code sẽ được truyền qua buffer
+      qrCodeBuffer: qrCodeBuffer // Truyền trực tiếp buffer
+    };
+
+    // Gửi email
+    const emailService = new EmailService();
+    const emailSent = await emailService.sendBookingConfirmationEmail(emailData);
+
+    if (emailSent) {
+      console.log(`✅ Booking confirmation email sent successfully to ${ticket.accounts.email}`);
+      return true;
+    } else {
+      console.error(`❌ Failed to send booking confirmation email to ${ticket.accounts.email}`);
+      return false;
+    }
+
+  } catch (error) {
+    console.error(`❌ Error sending booking confirmation email for ${bookingId}:`, error);
+    return false;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -203,6 +342,10 @@ export async function GET(request: NextRequest) {
         // 3️⃣ Cập nhật voucher usage khi thanh toán thành công
         await updateVoucherUsage(bookingId);
         console.log(`✅ Updated voucher usage for booking ${bookingId}`);
+        
+        // 4️⃣ Gửi email xác nhận đặt vé thành công
+        await sendBookingConfirmationEmail(bookingId);
+        console.log(`✅ Sent booking confirmation email for booking ${bookingId}`);
       } catch (error) {
         console.error(`❌ Failed to update booking ${bookingId}:`, error);
       }
