@@ -105,7 +105,7 @@ export default function CGVHeader({ hideQuickLinks = false }: { hideQuickLinks?:
     { href: '/cgv/cinemas', icon: <VideoCameraOutlined />, title: 'CGV CINEMAS', sub: 'RẠP CGV' },
     { href: '/cgv/movies?status=now_showing', icon: <PlayCircleOutlined />, title: 'NOW SHOWING', sub: 'PHIM ĐANG CHIẾU' },
     { href: '/cgv/movies?status=coming_soon', icon: <StarOutlined />, title: 'COMING SOON', sub: 'PHIM SẮP CHIẾU' },
-    { href: '/cgv', icon: <PhoneOutlined />, title: 'CONTACT CGV', sub: 'LIÊN HỆ CGV' },
+    { href: '/cgv/advertising', icon: <PhoneOutlined />, title: 'CONTACT CGV', sub: 'LIÊN HỆ CGV' },
     { href: '/news', icon: <GiftOutlined />, title: 'NEWS & OFFERS', sub: 'TIN MỚI & ƯU ĐÃI' },
     { href: '/auth/login', icon: <IdcardOutlined />, title: 'REGISTER', sub: 'ĐĂNG KÝ NGAY' },
   ];
@@ -157,12 +157,6 @@ export default function CGVHeader({ hideQuickLinks = false }: { hideQuickLinks?:
               </Link>
             )}
             
-            <div className="flex items-center gap-1 bg-gray-100 rounded-full px-2 py-1">
-              <GlobalOutlined className="text-xs text-gray-600" />
-              <button className="px-1.5 font-bold text-gray-800 text-xs">VN</button>
-              <span className="text-gray-300 text-xs">|</span>
-              <button className="px-1.5 text-gray-500 hover:text-gray-800 text-xs transition-colors">EN</button>
-            </div>
           </div>
         </div>
       </div>

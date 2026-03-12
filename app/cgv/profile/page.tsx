@@ -549,10 +549,6 @@ export default function ProfilePage() {
                       "vi-VN",
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <TagOutlined />
-                    {user?.points?.toLocaleString()} điểm
-                  </div>
                 </div>
               </div>
 
@@ -568,9 +564,6 @@ export default function ProfilePage() {
                     Chỉnh Sửa Hồ Sơ
                   </Button>
                 </Link>
-                <Button icon={<SettingOutlined />} size="large">
-                  Cài Đặt
-                </Button>
               </div>
             </div>
           </div>
@@ -606,12 +599,7 @@ export default function ProfilePage() {
                         icon: <HeartOutlined />,
                         color: "bg-amber-50 text-amber-600",
                       },
-                      {
-                        label: "Điểm Thưởng",
-                        count: user?.points?.toLocaleString(),
-                        icon: <StarOutlined />,
-                        color: "bg-blue-50 text-blue-600",
-                      },
+
                     ].map((item, i) => (
                       <div
                         key={i}

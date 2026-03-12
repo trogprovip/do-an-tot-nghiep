@@ -34,7 +34,7 @@ export default function AllMoviesPage() {
   const [optimisticFavorites, setOptimisticFavorites] = useState<Set<number>>(new Set());
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  const pageSize = 12;
+  const pageSize = 8;
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -65,40 +65,36 @@ export default function AllMoviesPage() {
       let response;
       
       if (status === 'all') {
-        // Fetch both now_showing and coming_soon movies for 'all' status
-        const [nowShowingResponse, comingSoonResponse] = await Promise.all([
-          movieService.getMovies({
-            page: currentPage,
-            size: Math.ceil(pageSize / 2), // Split page size between two types
-            status: 'now_showing',
-          }),
-          movieService.getMovies({
-            page: currentPage,
-            size: Math.ceil(pageSize / 2),
-            status: 'coming_soon',
-          })
-        ]);
+        // Fetch all movies (both now_showing and coming_soon) with pagination
+        const apiResponse = await fetch(`/api/movies/public?status=all&page=${currentPage + 1}&autoUpdate=true`);
         
-        // Combine the results
+        if (!apiResponse.ok) {
+          throw new Error('Failed to fetch movies');
+        }
+        
+        const data = await apiResponse.json();
         response = {
-          content: [...nowShowingResponse.content, ...comingSoonResponse.content],
-          totalElements: nowShowingResponse.totalElements + comingSoonResponse.totalElements,
-          totalPages: Math.max(nowShowingResponse.totalPages, comingSoonResponse.totalPages),
-          size: pageSize,
-          number: currentPage
+          movies: data.movies,
+          pagination: data.pagination
         };
       } else {
         // Fetch specific status (now_showing or coming_soon)
-        response = await movieService.getMovies({
-          page: currentPage,
-          size: pageSize,
-          status: status,
-        });
+        const apiResponse = await fetch(`/api/movies/public?status=${status}&page=${currentPage + 1}&autoUpdate=true`);
+        
+        if (!apiResponse.ok) {
+          throw new Error('Failed to fetch movies');
+        }
+        
+        const data = await apiResponse.json();
+        response = {
+          movies: data.movies,
+          pagination: data.pagination
+        };
       }
       
-      setMovies(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
+      setMovies(response.movies);
+      setTotalPages(response.pagination.totalPages);
+      setTotalElements(response.pagination.totalMovies);
     } catch (err) {
       console.error('Error fetching movies:', err);
       setError('Không thể tải danh sách phim');
@@ -108,7 +104,8 @@ export default function AllMoviesPage() {
   };
 
   const handleTabChange = (key: string) => {
-    // Không reset page, giữ nguyên vị trí
+    // Reset về trang 1 khi chuyển tab
+    setCurrentPage(0);
     startTransition(() => {
       if (key === 'all') {
         router.push('/cgv/movies', { scroll: false });

@@ -93,7 +93,7 @@ export default function CinemaForm({ initialData, onSubmit, isEditing = false }:
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'province_id' ? parseInt(value) || 0 : 
+      [name]: name === 'province_id' ? (parseInt(value) || 0) : 
               name === 'latitude' || name === 'longitude' ? (value ? parseFloat(value) : undefined) :
               value
     }));
@@ -103,6 +103,20 @@ export default function CinemaForm({ initialData, onSubmit, isEditing = false }:
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Validate province_id is selected
+    if (!formData.province_id || formData.province_id === 0) {
+      setError('Vui lòng chọn tỉnh/thành phố');
+      setLoading(false);
+      return;
+    }
+
+    // Validate phone number length
+    if (formData.phone && formData.phone.length > 10) {
+      setError('Số điện thoại không được vượt quá 10 ký tự');
+      setLoading(false);
+      return;
+    }
 
     try {
       await onSubmit(formData);
@@ -197,9 +211,11 @@ export default function CinemaForm({ initialData, onSubmit, isEditing = false }:
             value={formData.phone}
             onChange={handleChange}
             required
+            maxLength={10}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="VD: 0901234567"
+            placeholder="VD: 0901234567 (tối đa 10 số)"
           />
+          <p className="text-xs text-gray-500 mt-1">Số điện thoại không được vượt quá 10 ký tự</p>
         </div>
 
         <div>

@@ -26,6 +26,8 @@ export default function MovieSelection() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const autoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check scroll position and update button states
   const checkScrollPosition = () => {
@@ -74,6 +76,47 @@ export default function MovieSelection() {
       };
     }
   }, [movies]); // Re-check when movies change
+
+  // Auto-scroll effect - scroll left every 4 seconds
+  useEffect(() => {
+    const startAutoScroll = () => {
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+      }
+      
+      autoScrollIntervalRef.current = setInterval(() => {
+        if (scrollContainerRef.current && !isHovering) {
+          const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+          const scrollAmount = scrollContainerRef.current.offsetWidth * 0.8;
+          
+          // Check if we're at the end (with some buffer)
+          if (scrollLeft + clientWidth >= scrollWidth - 10) {
+            // Scroll back to start (right to left effect)
+            scrollContainerRef.current.scrollTo({
+              left: 0,
+              behavior: 'smooth'
+            });
+          } else {
+            // Scroll left (move forward)
+            scrollContainerRef.current.scrollBy({
+              left: scrollAmount,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 4000); // Scroll every 4 seconds
+    };
+
+    if (movies.length > 0) {
+      startAutoScroll();
+    }
+
+    return () => {
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+      }
+    };
+  }, [movies, isHovering]);
 
   useEffect(() => {
     const fetchMovies = async () => {
@@ -303,33 +346,31 @@ export default function MovieSelection() {
 
         {/* Movies Grid */}
         {!loading && !error && (
-          <div className="mb-12 relative">
+          <div className="mb-12 relative group/carousel px-4 md:px-10">
             {/* Left Scroll Button */}
-            {canScrollLeft && (
-              <button
-                onClick={scrollLeft}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 hover:scale-110 flex items-center justify-center -ml-5 sm:-ml-6"
-                aria-label="Scroll left"
-              >
-                <LeftOutlined className="text-sm sm:text-base" />
-              </button>
-            )}
+            <button
+              onClick={scrollLeft}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-30 w-10 h-10 bg-white/90 text-red-600 rounded-full shadow-md flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all -ml-2 hover:bg-red-600 hover:text-white"
+              aria-label="Scroll left"
+            >
+              <LeftOutlined />
+            </button>
 
             {/* Right Scroll Button */}
-            {canScrollRight && (
-              <button
-                onClick={scrollRight}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 hover:scale-110 flex items-center justify-center -mr-5 sm:-mr-6"
-                aria-label="Scroll right"
-              >
-                <RightOutlined className="text-sm sm:text-base" />
-              </button>
-            )}
+            <button
+              onClick={scrollRight}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-30 w-10 h-10 bg-white/90 text-red-600 rounded-full shadow-md flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all -mr-2 hover:bg-red-600 hover:text-white"
+              aria-label="Scroll right"
+            >
+              <RightOutlined />
+            </button>
 
             {/* Horizontal scroll container */}
             <div 
               ref={scrollContainerRef}
-              className="overflow-x-auto scrollbar-hide"
+              className="overflow-hidden scrollbar-hide"
+              onMouseEnter={() => setIsHovering(true)}
+              onMouseLeave={() => setIsHovering(false)}
             >
               <div className="flex gap-3 sm:gap-4 lg:gap-6 pb-4" style={{ minWidth: 'max-content' }}>
                 {movies.map((movie) => {

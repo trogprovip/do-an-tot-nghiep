@@ -29,7 +29,8 @@ export default function MoviesPage() {
         search: searchTerm || undefined,
         status: statusFilter || undefined,
         page: pagination.currentPage,
-        size: pagination.size
+        size: pagination.size,
+        autoUpdate: true // Enable automatic status updates
       };
       
       const data = await movieService.getMovies(params);
@@ -74,6 +75,25 @@ export default function MoviesPage() {
   const handleCreate = () => {
     // Chuyển đến trang tạo phim mới
     window.location.href = '/admin/movies/create';
+  };
+
+  const handleUpdateStatuses = async () => {
+    try {
+      const response = await fetch('/api/movies/update-statuses', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Cập nhật thành công ${result.updatedCount} phim!`);
+        fetchMovies(); // Refresh the movie list
+      } else {
+        alert('Có lỗi xảy ra khi cập nhật trạng thái phim!');
+      }
+    } catch (error) {
+      console.error('Error updating movie statuses:', error);
+      alert('Có lỗi xảy ra khi cập nhật trạng thái phim!');
+    }
   };
 
   const columns = [
@@ -128,13 +148,22 @@ export default function MoviesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý Phim</h1>
-        <button 
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Thêm phim mới
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleUpdateStatuses}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Cập nhật trạng thái tự động
+          </button>
+          <button 
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Thêm phim mới
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">

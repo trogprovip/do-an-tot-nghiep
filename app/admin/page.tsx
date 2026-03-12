@@ -11,12 +11,25 @@ interface Stats {
   totalRevenue: number;
 }
 
+interface Statistics {
+  currentlyShowingMovies: number;
+  activeCinemas: number;
+  todayShowtimes: number;
+  todaySoldTickets: number;
+}
+
 export default function AdminPage() {
   const [stats, setStats] = useState<Stats>({
     totalMovies: 0,
     totalUsers: 0,
     totalTickets: 0,
     totalRevenue: 0,
+  });
+  const [statistics, setStatistics] = useState<Statistics>({
+    currentlyShowingMovies: 0,
+    activeCinemas: 0,
+    todayShowtimes: 0,
+    todaySoldTickets: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -27,16 +40,18 @@ export default function AdminPage() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const [moviesRes, usersRes, ticketsRes] = await Promise.all([
+      const [moviesRes, usersRes, ticketsRes, statisticsRes] = await Promise.all([
         fetch('/api/movies?page=0&size=1'),
         fetch('/api/users?page=0&size=1'),
-        fetch('/api/tickets?page=0&size=100'),
+        fetch('/api/tickets?page=0&size=1000&payment_status=paid'),
+        fetch('/api/admin/statistics'),
       ]);
 
-      const [moviesData, usersData, ticketsData] = await Promise.all([
+      const [moviesData, usersData, ticketsData, statisticsData] = await Promise.all([
         moviesRes.json(),
         usersRes.json(),
         ticketsRes.json(),
+        statisticsRes.json(),
       ]);
 
       const revenue = ticketsData.content?.reduce((sum: number, ticket: { final_amount: number }) => 
@@ -48,6 +63,8 @@ export default function AdminPage() {
         totalTickets: ticketsData.totalElements || 0,
         totalRevenue: revenue,
       });
+
+      setStatistics(statisticsData);
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
@@ -144,6 +161,10 @@ export default function AdminPage() {
                   <Users className="w-5 h-5 text-orange-600" />
                   <span className="text-gray-700">Quản lý Người dùng</span>
                 </Link>
+                <Link href="/admin/revenue" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <span className="text-gray-700">Quản lý Doanh thu</span>
+                </Link>
               </div>
             </div>
 
@@ -152,19 +173,19 @@ export default function AdminPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Phim đang chiếu</span>
-                  <span className="font-semibold text-gray-900">-</span>
+                  <span className="font-semibold text-gray-900">{statistics.currentlyShowingMovies}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Rạp hoạt động</span>
-                  <span className="font-semibold text-gray-900">-</span>
+                  <span className="font-semibold text-gray-900">{statistics.activeCinemas}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Suất chiếu hôm nay</span>
-                  <span className="font-semibold text-gray-900">-</span>
+                  <span className="font-semibold text-gray-900">{statistics.todayShowtimes}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Vé đã bán hôm nay</span>
-                  <span className="font-semibold text-gray-900">-</span>
+                  <span className="font-semibold text-gray-900">{statistics.todaySoldTickets}</span>
                 </div>
               </div>
             </div>

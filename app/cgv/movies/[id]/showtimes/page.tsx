@@ -38,12 +38,17 @@ interface SlotWithDetails {
   };
 }
 
+interface RoomGroup {
+  room_id: number;
+  room_name: string;
+  slots: SlotWithDetails[];
+}
+
 interface CinemaGroup {
   cinema_id: number;
   cinema_name: string;
   address: string;
-  room_type: string;
-  slots: SlotWithDetails[];
+  rooms: RoomGroup[];
 }
 
 export default function MovieShowtimesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -146,18 +151,37 @@ export default function MovieShowtimesPage({ params }: { params: Promise<{ id: s
 
     slotsData.forEach((slot) => {
       const cinemaId = slot.rooms?.cinemas?.id;
-      if (!cinemaId) return;
+      const roomId = slot.rooms?.id;
+      if (!cinemaId || !roomId) return;
 
+      // Tạo hoặc lấy cinema group
       if (!grouped[cinemaId]) {
         grouped[cinemaId] = {
           cinema_id: cinemaId,
           cinema_name: slot.rooms?.cinemas?.cinema_name || '',
           address: slot.rooms?.cinemas?.address || '',
-          room_type: slot.rooms?.room_name || 'Rạp 2D',
-          slots: [],
+          rooms: [],
         };
       }
-      grouped[cinemaId].slots.push(slot);
+
+      // Tìm room group trong cinema group
+      let roomGroup = grouped[cinemaId].rooms.find(r => r.room_id === roomId);
+      if (!roomGroup) {
+        roomGroup = {
+          room_id: roomId,
+          room_name: slot.rooms?.room_name || '',
+          slots: [],
+        };
+        grouped[cinemaId].rooms.push(roomGroup);
+      }
+
+      // Thêm slot vào room group
+      roomGroup.slots.push(slot);
+    });
+
+    // Sắp xếp rooms theo tên
+    Object.values(grouped).forEach(cinema => {
+      cinema.rooms.sort((a, b) => a.room_name.localeCompare(b.room_name));
     });
 
     setCinemaGroups(Object.values(grouped));
@@ -342,68 +366,70 @@ export default function MovieShowtimesPage({ params }: { params: Promise<{ id: s
           ) : (
             <div className="space-y-6">
               {cinemaGroups.map((cinema) => (
-<div 
-  key={cinema.cinema_id} 
-  className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100 group/card"
->
-  {/* Header: Nền nhẹ nhàng hơn, thêm icon địa điểm */}
-  <div className="bg-gradient-to-r from-gray-50 to-white p-5 border-b border-gray-100">
-    <div className="flex justify-between items-start">
-      <div>
-        <h3 className="font-extrabold text-xl text-gray-800 tracking-tight group-hover/card:text-red-600 transition-colors">
-          {cinema.cinema_name}
-        </h3>
-        <div className="flex items-center gap-1.5 mt-2 text-gray-500">
-          <EnvironmentOutlined className="text-xs" /> {/* Cần import thêm icon này */}
-          <p className="text-xs leading-relaxed line-clamp-1">{cinema.address}</p>
-        </div>
-      </div>
-      {/* Badge loại phòng: Chuyển sang dạng outline hoặc soft background cho sang */}
-      <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-red-100">
-        {cinema.room_type}
-      </span>
-    </div>
-  </div>
-
-  <div className="p-5">
-    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">
-      Lịch chiếu hôm nay
-    </p>
-    
-    <div className="flex flex-wrap gap-3">
-      {cinema.slots
-        .sort((a, b) => new Date(a.show_time).getTime() - new Date(b.show_time).getTime())
-        .map((slot) => {
-          // Logic màu sắc dựa trên số lượng ghế
-          const isLowSeats = slot.empty_seats < 10;
-          
-          return (
-            <Link key={slot.id} href={`/cgv/booking/${slot.id}`} className="block">
-              <button className="relative overflow-hidden group/btn px-5 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:border-red-500 hover:bg-white transition-all duration-200 active:scale-95 shadow-sm">
-                <div className="flex flex-col items-center gap-1 relative z-10">
-                  <div className="flex items-center gap-2">
-                    <ClockCircleOutlined className="text-gray-400 group-hover/btn:text-red-500 transition-colors" />
-                    <span className="font-bold text-lg text-gray-700 group-hover/btn:text-red-600">
-                      {formatTime(slot.show_time)}
-                    </span>
+                <div 
+                  key={cinema.cinema_id} 
+                  className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100 group/card"
+                >
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-gray-50 to-white p-5 border-b border-gray-100">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-extrabold text-xl text-gray-800 tracking-tight group-hover/card:text-red-600 transition-colors">
+                          {cinema.cinema_name}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-2 text-gray-500">
+                          <EnvironmentOutlined className="text-xs" />
+                          <p className="text-xs leading-relaxed line-clamp-1">{cinema.address}</p>
+                        </div>
+                      </div>
+                      <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-red-100">
+                        {cinema.rooms.length} phòng
+                      </span>
+                    </div>
                   </div>
-                  
-                  <div className={`text-[10px] font-medium transition-colors ${
-                    isLowSeats ? 'text-orange-500' : 'text-gray-400'
-                  } group-hover/btn:text-gray-500`}>
-                    {isLowSeats ? '🔥 Cực ít ghế' : `${slot.empty_seats} ghế trống`}
+
+                  <div className="p-5">
+                    {cinema.rooms.map((room) => (
+                      <div key={room.room_id} className="mb-6 last:mb-0">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wider">
+                            {room.room_name}
+                          </h4>
+                          <span className="text-xs text-gray-500">
+                            ({room.slots.length} suất chiếu)
+                          </span>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-3 ml-4">
+                          {room.slots
+                            .sort((a, b) => new Date(a.show_time).getTime() - new Date(b.show_time).getTime())
+                            .map((slot) => {
+                              const isLowSeats = slot.empty_seats < 10;
+                              
+                              return (
+                                <Link key={slot.id} href={`/cgv/booking/${slot.id}`} className="block">
+                                  <button className="relative overflow-hidden group/btn px-5 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:border-red-500 hover:bg-white transition-all duration-200 active:scale-95 shadow-sm">
+                                    <div className="flex flex-col items-center gap-1 relative z-10">
+                                      <div className="flex items-center gap-2">
+                                        <ClockCircleOutlined className="text-gray-400 group-hover/btn:text-red-500 transition-colors" />
+                                        <span className="font-bold text-lg text-gray-700 group-hover/btn:text-red-600">
+                                          {formatTime(slot.show_time)}
+                                        </span>
+                                      </div>
+                                      
+                                    </div>
+                                    
+                                    <div className="absolute inset-0 bg-red-50 translate-y-[100%] group-hover/btn:translate-y-0 transition-transform duration-300 opacity-30" />
+                                  </button>
+                                </Link>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                
-                {/* Hiệu ứng hover giả: Một lớp nền chạy nhẹ */}
-                <div className="absolute inset-0 bg-red-50 translate-y-[100%] group-hover/btn:translate-y-0 transition-transform duration-300 opacity-30" />
-              </button>
-            </Link>
-          );
-        })}
-    </div>
-  </div>
-</div>
               ))}
             </div>
           )}

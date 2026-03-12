@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAutoMovieStatus } from '@/lib/utils/movieStatus';
 
 export async function GET(
   request: NextRequest,
@@ -84,7 +85,16 @@ export async function PUT(
     if (body.language !== undefined) updateData.language = body.language;
     if (body.poster_url !== undefined) updateData.poster_url = body.poster_url;
     if (body.trailer_url !== undefined) updateData.trailer_url = body.trailer_url;
-    if (body.status !== undefined) updateData.status = body.status;
+    
+    // Auto-determine status based on release date if release_date is being updated
+    if (body.release_date !== undefined) {
+      updateData.status = getAutoMovieStatus({
+        releaseDate: body.release_date,
+        currentStatus: body.status || existingMovie.status
+      });
+    } else if (body.status !== undefined) {
+      updateData.status = body.status;
+    }
     
     updateData.update_at = new Date();
 

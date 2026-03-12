@@ -75,7 +75,7 @@ export const slotService = {
       if (axios.isAxiosError(error)) {
         console.error('❌ Error details:', {
           status: error.response?.status,
-          message: error.response?.data?.message,
+          message: error.response?.data?.error || error.response?.data?.message,
           url: error.config?.url,
         });
       }
@@ -98,7 +98,7 @@ export const slotService = {
       if (axios.isAxiosError(error)) {
         console.error('❌ Error details:', {
           status: error.response?.status,
-          message: error.response?.data?.message,
+          message: error.response?.data?.error || error.response?.data?.message,
         });
       }
       throw error;
@@ -121,11 +121,11 @@ export const slotService = {
       if (axios.isAxiosError(error)) {
         console.error('❌ Error details:', {
           status: error.response?.status,
-          message: error.response?.data?.message,
+          message: error.response?.data?.error || error.response?.data?.message,
           data: error.response?.data,
         });
         // Ném lỗi với message từ backend
-        throw new Error(error.response?.data?.message || 'Không thể tạo suất chiếu');
+        throw new Error(error.response?.data?.error || error.response?.data?.message || 'Không thể tạo suất chiếu');
       }
       throw error;
     }
@@ -147,11 +147,11 @@ export const slotService = {
       if (axios.isAxiosError(error)) {
         console.error('❌ Error details:', {
           status: error.response?.status,
-          message: error.response?.data?.message,
+          message: error.response?.data?.error || error.response?.data?.message,
           data: error.response?.data,
         });
         // Ném lỗi với message từ backend
-        throw new Error(error.response?.data?.message || 'Không thể cập nhật suất chiếu');
+        throw new Error(error.response?.data?.error || error.response?.data?.message || 'Không thể cập nhật suất chiếu');
       }
       throw error;
     }
@@ -171,9 +171,9 @@ export const slotService = {
       if (axios.isAxiosError(error)) {
         console.error('❌ Error details:', {
           status: error.response?.status,
-          message: error.response?.data?.message,
+          message: error.response?.data?.error || error.response?.data?.message,
         });
-        throw new Error(error.response?.data?.message || 'Không thể xóa suất chiếu');
+        throw new Error(error.response?.data?.error || error.response?.data?.message || 'Không thể xóa suất chiếu');
       }
       throw error;
     }

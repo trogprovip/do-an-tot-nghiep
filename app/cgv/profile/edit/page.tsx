@@ -285,14 +285,6 @@ export default function EditProfilePage() {
                       <p className="font-semibold">{user?.username}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Hạng thành viên:</span>
-                      <p className="font-semibold text-yellow-600">{user?.membership_tier}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Điểm thưởng:</span>
-                      <p className="font-semibold">{user?.points?.toLocaleString()}</p>
-                    </div>
-                    <div>
                       <span className="text-gray-500">Ngày tham gia:</span>
                       <p className="font-semibold">
                         {new Date(user?.created_at || '').toLocaleDateString('vi-VN')}

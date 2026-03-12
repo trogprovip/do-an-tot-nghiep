@@ -82,6 +82,7 @@ export interface MovieFilterParams {
   page?: number;
   size?: number;
   sort?: string;
+  autoUpdate?: boolean;
 }
 
 export const getPublicMovies = async (status?: string) => {

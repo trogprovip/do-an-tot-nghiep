@@ -13,10 +13,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const movie_id = searchParams.get('movie_id');
     const room_id = searchParams.get('room_id');
+    const cinema_id = searchParams.get('cinema_id');
     const date = searchParams.get('date');
     const province_id = searchParams.get('province_id');
     
-    console.log('🔍 API Parsed params:', { page, size, search, movie_id, room_id, date, province_id });
+    console.log('🔍 API Parsed params:', { page, size, search, movie_id, room_id, cinema_id, date, province_id });
 
     const skip = page * size;
 
@@ -33,6 +34,26 @@ export async function GET(request: NextRequest) {
       where.room_id = parseInt(room_id);
     }
 
+    if (cinema_id) {
+      where.rooms = {
+        cinema_id: parseInt(cinema_id),
+      };
+    }
+
+    if (province_id) {
+      if (where.rooms) {
+        where.rooms.cinemas = {
+          province_id: parseInt(province_id),
+        };
+      } else {
+        where.rooms = {
+          cinemas: {
+            province_id: parseInt(province_id),
+          },
+        };
+      }
+    }
+
     if (date) {
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
@@ -42,14 +63,6 @@ export async function GET(request: NextRequest) {
       where.show_time = {
         gte: startDate,
         lte: endDate,
-      };
-    }
-
-    if (province_id) {
-      where.rooms = {
-        cinemas: {
-          province_id: parseInt(province_id),
-        },
       };
     }
 
@@ -129,14 +142,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Đếm số ghế thực tế trong phòng (chỉ đếm ghế active)
+    console.log('🔍 Counting seats for room_id:', parseInt(body.roomId));
+    
     const seatCount = await prisma.seats.count({
       where: {
-        room_id: parseInt(body.roomId), // ✅ Dùng roomId từ frontend
-        status: 'active', // Chỉ đếm ghế hoạt động, bỏ ghế hỏng
+        room_id: parseInt(body.roomId),
+        status: 'active',
       },
     });
+    
+    console.log('🔍 Seat count result:', seatCount);
+    
+    // Kiểm tra tất cả ghế trong phòng (không filter status)
+    const allSeats = await prisma.seats.count({
+      where: { room_id: parseInt(body.roomId) },
+    });
+    console.log('🔍 All seats in room (no status filter):', allSeats);
 
-    if (seatCount === 0) {
+    if (allSeats === 0) {
       return NextResponse.json(
         { error: 'Room has no seats. Please create seats first.' },
         { status: 400 }
@@ -170,42 +193,38 @@ export async function POST(request: NextRequest) {
       console.log('Using default ticket price:', ticketPrice);
     }
 
-    // Convert format để đồng bộ với Spring Boot: yyyy-MM-dd HH:mm:ss
-    // Input: "2026-01-07 19:00:00" (đã là local time string)
-    const formatDateTimeForDB = (dateString: string) => {
-      console.log('🔍 Input date string:', dateString);
-      
-      // ✅ FIX: Không dùng new Date() vì nó sẽ parse theo UTC
-      // Chỉ parse string thành các phần và tạo Date object với local timezone
-      const parts = dateString.split(' ');
-      const [year, month, day] = parts[0].split('-');
-      const [hours, minutes, seconds] = parts[1].split(':');
-      
-      // Tạo Date object với local timezone (Vietnam)
-      const result = new Date(
-        parseInt(year),
-        parseInt(month) - 1, // Month is 0-indexed
-        parseInt(day),
-        parseInt(hours),
-        parseInt(minutes),
-        parseInt(seconds || '0')
+    // Format datetime
+    const formattedShowTime = new Date(body.showTime.replace(' ', 'T'));
+    const formattedEndTime = new Date(body.endTime.replace(' ', 'T'));
+
+    // Chỉ kiểm tra trùng lặp giờ chiếu trong cùng phòng
+    const existingSlot = await prisma.slots.findFirst({
+      where: {
+        room_id: parseInt(body.roomId),
+        show_time: formattedShowTime,
+        is_deleted: false,
+      },
+    });
+
+    if (existingSlot) {
+      console.log('🔍 Duplicate showtime found:', existingSlot);
+      return NextResponse.json(
+        { 
+          error: 'Suất chiếu này đã tồn tại! Không thể tạo suất chiếu trùng lặp.',
+          details: `Phòng này đã có suất chiếu khác vào lúc ${body.showTime}`
+        },
+        { status: 409 }
       );
-      
-      console.log('🔍 Formatted for DB:', result);
-      console.log('🔍 DB ISO:', result.toISOString());
-      console.log('🔍 DB Local:', result.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
-      
-      return result;
-    };
+    }
 
     const newSlot = await prisma.slots.create({
       data: {
-        movie_id: parseInt(body.movieId), // ✅ Nhận movieId từ frontend
-        room_id: parseInt(body.roomId),   // ✅ Nhận roomId từ frontend
-        show_time: formatDateTimeForDB(body.showTime), // ✅ Nhận showTime từ frontend
-        end_time: formatDateTimeForDB(body.endTime),   // ✅ Nhận endTime từ frontend
+        movie_id: parseInt(body.movieId),
+        room_id: parseInt(body.roomId),
+        show_time: formattedShowTime,
+        end_time: formattedEndTime,
         price: ticketPrice,
-        empty_seats: seatCount, // Số ghế thực tế đã tạo
+        empty_seats: allSeats,
         create_at: new Date(),
         is_deleted: false,
       },

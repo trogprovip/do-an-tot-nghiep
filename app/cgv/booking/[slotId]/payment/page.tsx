@@ -657,29 +657,6 @@ export default function PaymentPage({ params }: { params: Promise<{ slotId: stri
                     {getTotalAmount().toLocaleString('vi-VN')}đ
                   </Text>
                 </div>
-
-                {/* Payment Methods */}
-                <div className="flex justify-center gap-6 mb-8">
-                  <div className="text-center">
-                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mb-1">
-                      <span className="text-blue-600 text-xs font-bold">ATM</span>
-                    </div>
-                    <span className="text-xs text-gray-500">Nội địa</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-1">
-                      <span className="text-purple-600 text-xs font-bold">Ví</span>
-                    </div>
-                    <span className="text-xs text-gray-500">Điện tử</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mb-1">
-                      <span className="text-green-600 text-xs font-bold">QR</span>
-                    </div>
-                    <span className="text-xs text-gray-500">Quét mã</span>
-                  </div>
-                </div>
-
                 {/* Payment Button */}
                 <Button 
                   type="primary" 

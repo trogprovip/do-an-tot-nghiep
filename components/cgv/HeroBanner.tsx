@@ -7,22 +7,22 @@ import { LeftOutlined, RightOutlined, FireFilled, StarFilled } from '@ant-design
 const banners = [
   {
     id: 1,
-    image: 'https://iguov8nhvyobj.vcdn.cloud/media/banner/cache/1/b58515f018eb873dafa430b6f9ae0c1e/g/h/ghibli.jpg',
+    image: 'https://iguov8nhvyobj.vcdn.cloud/media/wysiwyg/2026/022026/SELF_LOVE_N_O_350x495.png',
     title: 'CGV MEMBER DAY',
-    description: 'Mua 2 Tặng 1 - X2 ĐIỂM THƯỞNG',
+    description: 'SELF LOVE',
     tag: 'ƯU ĐÃI HOT'
   },
   {
     id: 2,
-    image: 'https://iguov8nhvyobj.vcdn.cloud/media/banner/cache/1/b58515f018eb873dafa430b6f9ae0c1e/9/8/980x448_23__4.jpg',
-    title: 'SIÊU PHẨM HOẠT HÌNH',
-    description: 'Đồng giá 79.000đ Cho Học Sinh - Sinh Viên',
-    tag: 'SẮP CHIẾU'
+    image: 'https://iguov8nhvyobj.vcdn.cloud/media/catalog/product/cache/1/image/c5f0a1eff4c394a251036189ccddaacd/t/o/to_poster_official_tiectet_3x4_fa.jpg',
+    title: 'SIÊU PHẨM PHIM HOT',
+    description: 'PHIM MỚI RA RẤT HAY',
+    tag: 'ĐANG CHIẾU'
   },
   {
     id: 3,
-    image: 'https://iguov8nhvyobj.vcdn.cloud/media/banner/cache/1/b58515f018eb873dafa430b6f9ae0c1e/r/o/rollingbanner_980x448_2_-min.png',
-    title: 'COMBO TIẾT KIỆM',
+    image: 'https://iguov8nhvyobj.vcdn.cloud/media/wysiwyg/2025/032025/Masita_N_O_350x495.png',
+    title: 'BẮP LẮC MASITA',
     description: 'Thưởng thức phim hay - Nhận ngay quà chất',
     tag: 'ĐỘC QUYỀN'
   },
@@ -99,13 +99,7 @@ export default function HeroBanner() {
                   
                   {/* Button - Hiệu ứng trượt sáng (Shine) */}
                   <div className="animate-fade-in-up delay-300">
-                    <button className="relative overflow-hidden group/btn bg-gradient-to-r from-red-600 to-red-700 text-white px-6 sm:px-8 lg:px-10 py-2 sm:py-3 lg:py-3.5 rounded-full font-bold text-sm sm:text-base lg:text-lg shadow-[0_10px_20px_rgba(185,28,28,0.4)] hover:shadow-[0_15px_30px_rgba(185,28,28,0.6)] hover:-translate-y-1 transition-all duration-300 border-b-2 sm:border-b-4 border-red-900 active:border-b-0 active:translate-y-0">
-                      <span className="relative z-10 flex items-center gap-1 sm:gap-2">
-                        XEM CHI TIẾT <StarFilled className="text-yellow-300 animate-spin-slow text-sm sm:text-base"/>
-                      </span>
-                      {/* Vệt sáng quét qua nút */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:animate-shine"></div>
-                    </button>
+
                   </div>
 
                 </div>

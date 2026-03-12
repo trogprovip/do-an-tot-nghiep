@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAutoMovieStatus } from '@/lib/utils/movieStatus';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
     const size = parseInt(searchParams.get('size') || '10');
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
+    const autoUpdate = searchParams.get('autoUpdate') === 'true';
 
     const skip = page * size;
 
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const totalElements = await prisma.movies.count({ where });
 
-    const content = await prisma.movies.findMany({
+    let content = await prisma.movies.findMany({
       where,
       skip,
       take: size,
@@ -65,6 +67,17 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Auto-update status if requested
+    if (autoUpdate) {
+      content = content.map(movie => ({
+        ...movie,
+        status: getAutoMovieStatus({
+          releaseDate: movie.release_date,
+          currentStatus: movie.status || undefined
+        })
+      }));
+    }
+
     return NextResponse.json({
       content,
       totalElements,
@@ -84,30 +97,76 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    console.log('🔵 Movie data received:', body);
+
+    // Auto-determine status based on release date
+    const autoStatus = getAutoMovieStatus({
+      releaseDate: body.release_date,
+      currentStatus: body.status
+    });
+    
+    console.log('🔵 Auto status:', autoStatus);
+
+    // Validate and parse duration
+    let duration = 0;
+    if (body.duration) {
+      duration = parseInt(body.duration);
+      if (isNaN(duration)) {
+        console.error('❌ Invalid duration:', body.duration);
+        return NextResponse.json(
+          { success: false, error: 'Invalid duration value' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate release date
+    let releaseDate = null;
+    if (body.release_date) {
+      releaseDate = new Date(body.release_date);
+      if (isNaN(releaseDate.getTime())) {
+        console.error('❌ Invalid release date:', body.release_date);
+        return NextResponse.json(
+          { success: false, error: 'Invalid release date format' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const movieData = {
+      title: body.title,
+      description: body.description || null,
+      duration: duration,
+      release_date: releaseDate,
+      director: body.director || null,
+      cast: body.cast || null,
+      genre: body.genre || null,
+      language: body.language || null,
+      poster_url: body.poster_url || null,
+      trailer_url: body.trailer_url || null,
+      status: autoStatus,
+      create_at: new Date(),
+      is_deleted: false,
+    };
+    
+    console.log('🔵 Final movie data:', movieData);
 
     const newMovie = await prisma.movies.create({
-      data: {
-        title: body.title,
-        description: body.description,
-        duration: parseInt(body.duration),
-        release_date: body.release_date ? new Date(body.release_date) : null,
-        director: body.director,
-        cast: body.cast,
-        genre: body.genre,
-        language: body.language,
-        poster_url: body.poster_url,
-        trailer_url: body.trailer_url,
-        status: body.status || 'coming_soon',
-        create_at: new Date(),
-        is_deleted: false,
-      },
+      data: movieData,
     });
 
+    console.log('✅ Movie created successfully:', newMovie);
     return NextResponse.json(newMovie, { status: 201 });
   } catch (error) {
-    console.error('Error creating movie:', error);
+    console.error('❌ Error creating movie:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json(
-      { success: false, error: 'Failed to create movie' },
+      { 
+        success: false, 
+        error: 'Failed to create movie',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

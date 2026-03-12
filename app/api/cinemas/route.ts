@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,6 +71,22 @@ export async function POST(request: NextRequest) {
 
     console.log('Creating cinema with data:', body);
 
+    // Validate phone number length (max 10 characters for database constraint)
+    if (body.phone && body.phone.length > 10) {
+      return NextResponse.json(
+        { success: false, error: 'Số điện thoại không được vượt quá 10 ký tự' },
+        { status: 400 }
+      );
+    }
+
+    // Validate province_id is not 0
+    if (!body.province_id || body.province_id === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Vui lòng chọn tỉnh/thành phố' },
+        { status: 400 }
+      );
+    }
+
     if (!body.cinema_name || !body.address || !body.phone || !body.email || !body.province_id) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields: cinema_name, address, phone, email, province_id' },
@@ -84,8 +101,8 @@ export async function POST(request: NextRequest) {
         phone: body.phone,
         email: body.email,
         province_id: parseInt(body.province_id),
-        latitude: body.latitude ? String(body.latitude) : null,
-        longitude: body.longitude ? String(body.longitude) : null,
+        latitude: body.latitude ? new Decimal(body.latitude) : null,
+        longitude: body.longitude ? new Decimal(body.longitude) : null,
         status: body.status || 'active',
         create_at: new Date(),
         is_deleted: false,

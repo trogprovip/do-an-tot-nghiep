@@ -6,7 +6,6 @@ import DataTable from "@/components/DataTable";
 import { Search, Save, X, Trash2, Eye, SquarePen } from "lucide-react";
 import { ticketService, Ticket } from "@/lib/services/ticketService";
 export default function TicketsPage() {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   // Khởi tạo state mặc định để tránh lỗi null/undefined
@@ -26,34 +25,57 @@ export default function TicketsPage() {
     size: 5,
   });
 
+  // State để lưu trữ tất cả tickets từ API
+  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
+
   useEffect(() => {
     fetchTickets();
-  }, [searchTerm, statusFilter, paymentStatusFilter, pagination.currentPage]);
+  }, [searchTerm]); // Chỉ fetch lại khi search thay đổi
+
+  useEffect(() => {
+    // Tính lại phân trang khi filters thay đổi
+    const filtered = allTickets.filter((ticket) => {
+      if (statusFilter && ticket.status !== statusFilter) return false;
+      if (paymentStatusFilter && ticket.payment_status !== paymentStatusFilter)
+        return false;
+      return true;
+    });
+    
+    const totalPages = Math.ceil(filtered.length / pagination.size);
+    const currentPage = Math.min(pagination.currentPage, Math.max(0, totalPages - 1));
+    
+    setPagination(prev => ({
+      ...prev,
+      totalPages,
+      totalElements: filtered.length,
+      currentPage
+    }));
+  }, [statusFilter, paymentStatusFilter, allTickets]); // Bỏ pagination.size và pagination.currentPage để tránh infinite loop
 
   const fetchTickets = async () => {
     try {
       setLoading(true);
       const response = await ticketService.getTickets({
-        page: pagination.currentPage,
-        size: pagination.size,
+        page: 0,
+        size: 1000, // Lấy tất cả tickets để xử lý client-side
         search: searchTerm || undefined,
-        // Nếu API hỗ trợ filter status thì truyền thêm vào đây
       });
 
-      // Cập nhật dữ liệu và thông số phân trang
       if (response && response.content) {
-        setTickets(response.content);
+        setAllTickets(response.content);
+        // Tính toán phân trang ban đầu
+        const totalPages = Math.ceil(response.content.length / pagination.size);
         setPagination((prev) => ({
           ...prev,
-          totalPages: response.totalPages || 0,
-          totalElements: response.totalElements || 0,
+          totalPages,
+          totalElements: response.content.length,
         }));
       } else {
-        // Fallback nếu API trả về mảng trực tiếp
-        setTickets(Array.isArray(response) ? response : []);
+        setAllTickets([]);
       }
     } catch (error) {
       console.error("Error fetching tickets:", error);
+      setAllTickets([]);
     } finally {
       setLoading(false);
     }
@@ -65,6 +87,16 @@ export default function TicketsPage() {
 
   const handleSearchChange = (val: string) => {
     setSearchTerm(val);
+    setPagination((prev) => ({ ...prev, currentPage: 0 }));
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setPagination((prev) => ({ ...prev, currentPage: 0 }));
+  };
+
+  const handlePaymentStatusFilterChange = (value: string) => {
+    setPaymentStatusFilter(value);
     setPagination((prev) => ({ ...prev, currentPage: 0 }));
   };
 
@@ -91,8 +123,8 @@ export default function TicketsPage() {
         payment_status: editingPaymentStatus as any,
       });
 
-      setTickets((prevTickets) =>
-        prevTickets.map((ticket) =>
+      setAllTickets((prevTickets: Ticket[]) =>
+        prevTickets.map((ticket: Ticket) =>
           ticket.id === ticketId
             ? {
                 ...ticket,
@@ -123,7 +155,7 @@ export default function TicketsPage() {
     setDeletingTicketId(ticketId);
     try {
       await ticketService.deleteTicket(ticketId);
-      setTickets((prev) => prev.filter((ticket) => ticket.id !== ticketId));
+      setAllTickets((prev: Ticket[]) => prev.filter((ticket: Ticket) => ticket.id !== ticketId));
       alert("Xóa vé thành công!");
     } catch (error) {
       console.error("Error deleting ticket:", error);
@@ -147,13 +179,19 @@ export default function TicketsPage() {
     refunded: "Đã hoàn tiền",
   };
 
-  // Filter client-side (nếu API chưa hỗ trợ filter)
-  const filteredTickets = tickets.filter((ticket) => {
+  // Filter client-side và phân trang
+  const filteredTickets = allTickets.filter((ticket) => {
     if (statusFilter && ticket.status !== statusFilter) return false;
     if (paymentStatusFilter && ticket.payment_status !== paymentStatusFilter)
       return false;
     return true;
   });
+
+  // Lấy tickets cho trang hiện tại
+  const paginatedTickets = filteredTickets.slice(
+    pagination.currentPage * pagination.size,
+    (pagination.currentPage + 1) * pagination.size
+  );
 
   const columns = [
     { key: "id", label: "ID", width: "60px" },
@@ -356,13 +394,13 @@ export default function TicketsPage() {
               type="text"
               placeholder="Tìm kiếm vé..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => handleStatusFilterChange(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Tất cả trạng thái</option>
@@ -373,7 +411,7 @@ export default function TicketsPage() {
           </select>
           <select
             value={paymentStatusFilter}
-            onChange={(e) => setPaymentStatusFilter(e.target.value)}
+            onChange={(e) => handlePaymentStatusFilterChange(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Tất cả thanh toán</option>
@@ -392,11 +430,11 @@ export default function TicketsPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <DataTable
             columns={columns}
-            data={tickets} // Lưu ý: Nên dùng tickets trực tiếp nếu đã phân trang từ API
+            data={paginatedTickets} // Sử dụng paginatedTickets để hiển thị đúng số lượng vé cho trang hiện tại
             pagination={{
               currentPage: pagination.currentPage,
               totalPages: pagination.totalPages,
-              totalElements: pagination.totalElements,
+              totalElements: filteredTickets.length, // Hiển thị tổng số vé đã lọc
               size: pagination.size,
               onPageChange: handlePageChange,
             }}

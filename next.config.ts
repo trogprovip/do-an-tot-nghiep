@@ -32,7 +32,8 @@ const nextConfig: NextConfig = {
       'tse3.mm.bing.net', 
       'tse4.mm.bing.net',
       'th.bing.com', 
-      'via.placeholder.com'
+      'via.placeholder.com',
+      'iguov8nhvyobj.vcdn.cloud'
     ],
   },
 };

@@ -19,7 +19,8 @@ import {
   Armchair,
   Sofa,
   Star,
-  QrCode
+  QrCode,
+  DollarSign
 } from 'lucide-react';
 import { DollarCircleOutlined } from '@ant-design/icons';
 // Phân nhóm menu để sidebar cân đối hơn
@@ -56,6 +57,7 @@ const menuGroups = [
     title: 'HỆ THỐNG',
     items: [
       { icon: Users, label: 'Người dùng', href: '/admin/users' },
+      { icon: DollarSign, label: 'Quản lý Doanh thu', href: '/admin/revenue' },
       { icon: DollarCircleOutlined, label: 'Giá vé', href: '/admin/settings' },
     ]
   }

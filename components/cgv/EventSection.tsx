@@ -136,24 +136,6 @@ export default function EventSection() {
           <div className="w-20 h-1.5 bg-red-500 mx-auto rounded-full"></div>
         </div>
 
-        {/* Custom Tabs Switcher */}
-        <div className="mb-10 flex justify-center">
-          <div className="p-1.5 bg-gray-100 rounded-full inline-flex shadow-inner">
-            <button 
-                onClick={() => setActiveTab('member')}
-                className={`px-8 py-3 rounded-full font-bold transition-all duration-300 flex items-center gap-2 ${activeTab === 'member' ? 'bg-white text-red-600 shadow-lg scale-105' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-                <GiftFilled /> Thành Viên CGV
-            </button>
-            <button 
-                onClick={() => setActiveTab('news')}
-                className={`px-8 py-3 rounded-full font-bold transition-all duration-300 flex items-center gap-2 ${activeTab === 'news' ? 'bg-white text-red-600 shadow-lg scale-105' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-                <TagFilled /> Tin Mới & Ưu Đãi
-            </button>
-          </div>
-        </div>
-
         {/* Events Carousel */}
       <div className="relative mb-12 px-4 md:px-10 group/carousel overflow-x-hidden">
         {/* Nút điều hướng - Thu nhỏ lại và ẩn/hiện thông minh */}
